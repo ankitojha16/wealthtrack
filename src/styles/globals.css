@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --wealthtrack-accent: #0ea5e9;
+    --wealthtrack-accent-soft: rgba(14, 165, 233, 0.18);
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+  }
+
+  html, body {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen antialiased selection:bg-sky-500 selection:text-white;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html {
+    scroll-padding-bottom: 6rem;
+  }
+}
+
+.brand-accent {
+  color: var(--wealthtrack-accent);
+}
+
+.brand-accent-bg {
+  background-color: var(--wealthtrack-accent);
+}
+
+.brand-accent-soft {
+  background-color: var(--wealthtrack-accent-soft);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  @apply outline-none ring-2 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
+}
+
+/* Print optimization for Financial Reports */
+@media print {
+  nav, footer, .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}

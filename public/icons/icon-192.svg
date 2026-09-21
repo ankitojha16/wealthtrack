@@ -1,0 +1,83 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="navy" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#102846"/>
+      <stop offset="70%" stop-color="#06172b"/>
+      <stop offset="100%" stop-color="#03101f"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8f5a00"/>
+      <stop offset="20%" stop-color="#ffd968"/>
+      <stop offset="45%" stop-color="#fff0a0"/>
+      <stop offset="65%" stop-color="#d99a19"/>
+      <stop offset="85%" stop-color="#ffcf4b"/>
+      <stop offset="100%" stop-color="#8b5700"/>
+    </linearGradient>
+    <linearGradient id="goldBright" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff2a3"/>
+      <stop offset="35%" stop-color="#ffd34f"/>
+      <stop offset="70%" stop-color="#d99512"/>
+      <stop offset="100%" stop-color="#8c5700"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+    <g id="tick">
+      <line x1="256" y1="91" x2="256" y2="99" stroke="#eab52d" stroke-width="2"/>
+    </g>
+    <g id="majorTick">
+      <line x1="256" y1="88" x2="256" y2="101" stroke="#ffd75b" stroke-width="3"/>
+    </g>
+  </defs>
+  <circle cx="256" cy="256" r="245" fill="url(#navy)" stroke="url(#gold)" stroke-width="10" filter="url(#shadow)"/>
+  <circle cx="256" cy="256" r="145" fill="none" stroke="url(#goldBright)" stroke-width="10"/>
+  <circle cx="256" cy="256" r="119" fill="none" stroke="#d89a19" stroke-width="2"/>
+  <use href="#tick"/>
+  <use href="#tick" transform="rotate(10 256 256)"/>
+  <use href="#tick" transform="rotate(20 256 256)"/>
+  <use href="#tick" transform="rotate(30 256 256)"/>
+  <use href="#tick" transform="rotate(40 256 256)"/>
+  <use href="#tick" transform="rotate(50 256 256)"/>
+  <use href="#tick" transform="rotate(60 256 256)"/>
+  <use href="#tick" transform="rotate(70 256 256)"/>
+  <use href="#tick" transform="rotate(80 256 256)"/>
+  <use href="#tick" transform="rotate(90 256 256)"/>
+  <use href="#tick" transform="rotate(100 256 256)"/>
+  <use href="#tick" transform="rotate(110 256 256)"/>
+  <use href="#tick" transform="rotate(120 256 256)"/>
+  <use href="#tick" transform="rotate(130 256 256)"/>
+  <use href="#tick" transform="rotate(140 256 256)"/>
+  <use href="#tick" transform="rotate(150 256 256)"/>
+  <use href="#tick" transform="rotate(160 256 256)"/>
+  <use href="#tick" transform="rotate(170 256 256)"/>
+  <use href="#tick" transform="rotate(180 256 256)"/>
+  <use href="#tick" transform="rotate(190 256 256)"/>
+  <use href="#tick" transform="rotate(200 256 256)"/>
+  <use href="#tick" transform="rotate(210 256 256)"/>
+  <use href="#tick" transform="rotate(220 256 256)"/>
+  <use href="#tick" transform="rotate(230 256 256)"/>
+  <use href="#tick" transform="rotate(240 256 256)"/>
+  <use href="#tick" transform="rotate(250 256 256)"/>
+  <use href="#tick" transform="rotate(260 256 256)"/>
+  <use href="#tick" transform="rotate(270 256 256)"/>
+  <use href="#tick" transform="rotate(280 256 256)"/>
+  <use href="#tick" transform="rotate(290 256 256)"/>
+  <use href="#tick" transform="rotate(300 256 256)"/>
+  <use href="#tick" transform="rotate(310 256 256)"/>
+  <use href="#tick" transform="rotate(320 256 256)"/>
+  <use href="#tick" transform="rotate(330 256 256)"/>
+  <use href="#tick" transform="rotate(340 256 256)"/>
+  <use href="#tick" transform="rotate(350 256 256)"/>
+  <g fill="url(#goldBright)" filter="url(#softShadow)">
+    <path d="M256 34 L274 118 L256 105 L238 118 Z"/>
+    <path d="M478 256 L394 274 L407 256 L394 238 Z"/>
+    <path d="M256 478 L238 394 L256 407 L274 394 Z"/>
+    <path d="M34 256 L118 238 L105 256 L118 274 Z"/>
+  </g>
+  <circle cx="256" cy="256" r="126" fill="none" stroke="#ffd34e" stroke-width="1.5" opacity="0.8"/>
+  <text x="256" y="302" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="188" font-weight="bold" fill="#000000" opacity="0.5" transform="translate(4 7)">W</text>
+  <text x="256" y="302" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="188" font-weight="bold" fill="url(#goldBright)" stroke="#f5c94b" stroke-width="1">W</text>
+</svg>

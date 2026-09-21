@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /budget
+Disallow: /goals
+Disallow: /investments
+Disallow: /reports
+Disallow: /settings
+Disallow: /account
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+
+Sitemap: https://wealthtrack.app/sitemap.xml

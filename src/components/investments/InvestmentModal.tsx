@@ -132,36 +132,44 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
   };
 
   const calculateXIRRValue = () => {
-    if (!startMonthYear || !totalYears || Number(totalYears) <= 0 || Number(amount) <= 0 || Number(currentValue) <= 0) return null;
-    
-    const [year, month] = startMonthYear.split('-');
-    const start = new Date(Number(year), Number(month) - 1, 1);
-    
-    if (type === 'SIP') {
-      const months = Math.floor(Number(totalYears) * 12);
-      const end = new Date(start);
-      end.setMonth(end.getMonth() + months);
+    try {
+      if (!startMonthYear || !totalYears || Number(totalYears) <= 0 || Number(amount) <= 0 || Number(currentValue) <= 0) return null;
       
-      const flows = Array.from({ length: months }, (_, i) => ({
-        amount: -Number(amount),
-        date: new Date(start.getFullYear(), start.getMonth() + i, 1).toISOString().slice(0, 10),
-      }));
-      flows.push({ amount: Number(currentValue), date: end.toISOString().slice(0, 10) });
+      const [year, month] = startMonthYear.split('-');
+      const start = new Date(Number(year), Number(month) - 1, 1);
+      if (isNaN(start.getTime())) return null;
       
-      const result = calculateXIRR(flows);
-      return result.status === 'converged' ? result.xirr : null;
+      if (type === 'SIP') {
+        const months = Math.floor(Number(totalYears) * 12);
+        const end = new Date(start);
+        end.setMonth(end.getMonth() + months);
+        if (isNaN(end.getTime())) return null;
+        
+        const flows = Array.from({ length: months }, (_, i) => ({
+          amount: -Number(amount),
+          date: new Date(start.getFullYear(), start.getMonth() + i, 1).toISOString().slice(0, 10),
+        }));
+        flows.push({ amount: Number(currentValue), date: end.toISOString().slice(0, 10) });
+        
+        const result = calculateXIRR(flows);
+        return result.status === 'converged' ? result.xirr : null;
+      }
+      
+      if (type === 'Lumpsum') {
+        const end = new Date(start);
+        end.setFullYear(end.getFullYear() + Number(totalYears));
+        if (isNaN(end.getTime())) return null;
+
+        const result = calculateXIRR([
+          { amount: -Number(amount), date: start.toISOString().slice(0, 10) },
+          { amount: Number(currentValue), date: end.toISOString().slice(0, 10) },
+        ]);
+        return result.status === 'converged' ? result.xirr : null;
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
-    
-    if (type === 'Lumpsum') {
-      const end = new Date(start);
-      end.setFullYear(end.getFullYear() + Number(totalYears));
-      const result = calculateXIRR([
-        { amount: -Number(amount), date: start.toISOString().slice(0, 10) },
-        { amount: Number(currentValue), date: end.toISOString().slice(0, 10) },
-      ]);
-      return result.status === 'converged' ? result.xirr : null;
-    }
-    return null;
   };
 
   const xirr = calculateXIRRValue();

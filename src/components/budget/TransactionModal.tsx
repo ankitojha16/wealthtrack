@@ -82,7 +82,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to save transaction record', error);
-      setError('Unable to save. Please try again.');
+      setError(error instanceof Error ? error.message : 'Unable to save. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

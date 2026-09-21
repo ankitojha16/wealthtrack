@@ -13,14 +13,19 @@ export async function getActiveUser(): Promise<UserSession | null> {
 export async function signInWithPassword(email: string, password: string): Promise<UserSession | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error || !data.user) return null;
+  if (error) throw error;
+  if (!data.user) return null;
   return { id: data.user.id, email: data.user.email ?? null };
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<UserSession | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error || !data.user) return null;
+  if (error) throw error;
+  if (!data.session && data.user) {
+    throw new Error('Please check your email to verify your account before logging in.');
+  }
+  if (!data.user) return null;
   return { id: data.user.id, email: data.user.email ?? null };
 }
 

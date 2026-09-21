@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useFinance } from '@/lib/context/FinanceContext';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/formatters';
 import { InvestmentModal } from '@/components/investments/InvestmentModal';
-import { StockModal } from '@/components/investments/StockModal';
 import { ValueUpdateModal } from '@/components/investments/ValueUpdateModal';
 import { InvestmentDetailsModal } from '@/components/investments/InvestmentDetailsModal';
 import { DonutChart } from '@/components/charts/DonutChart';
@@ -39,8 +38,9 @@ export default function InvestmentsPage() {
     removeInvestment,
   } = useFinance();
 
+
+
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [updateValTarget, setUpdateValTarget] = useState<Investment | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<Investment | null>(null);
@@ -64,11 +64,11 @@ export default function InvestmentsPage() {
   const stocksInvestments = investments.filter((i) => i.type === 'Stocks');
   const stocksValuation = stocksInvestments.reduce((sum, i) => sum + i.currentValue, 0);
 
-  const mfInvestments = investments.filter((i) => i.type === 'Mutual Fund');
+  const mfInvestments = investments.filter((i) => i.type === 'SIP' || i.type === 'Lumpsum' || i.type === 'Mutual Fund');
   const mfValuation = mfInvestments.reduce((sum, i) => sum + i.currentValue, 0);
 
   const fdInvestments = investments.filter(
-    (i) => i.type === 'Fixed Deposit' || i.type === 'Fixed Deposit (FD)' || i.type === 'FD'
+    (i) => i.type === 'FD' || i.type === 'Fixed Deposit' || i.type === 'Fixed Deposit (FD)'
   );
   const fdValuation = fdInvestments.reduce((sum, i) => sum + i.currentValue, 0);
 
@@ -80,12 +80,15 @@ export default function InvestmentsPage() {
   investments.forEach((inv) => {
     let cleanType = inv.type;
     if (cleanType === 'FD' || cleanType === 'Fixed Deposit (FD)') cleanType = 'Fixed Deposit';
-    if (cleanType === 'RD' || cleanType === 'Recurring Deposit (RD)') cleanType = 'Recurring Deposit';
+    if (cleanType === 'RD') cleanType = 'Recurring Deposit';
     if (cleanType === 'Other Investment') cleanType = 'Other';
     invByType[cleanType] = (invByType[cleanType] || 0) + inv.currentValue;
   });
 
   const typeColors: Record<string, string> = {
+    SIP: '#0284c7',
+    Lumpsum: '#0ea5e9',
+    FD: '#10b981',
     'Mutual Fund': '#0284c7',
     'Fixed Deposit': '#10b981',
     'Recurring Deposit': '#059669',
@@ -164,7 +167,7 @@ export default function InvestmentsPage() {
             type="button"
             onClick={() => {
               setEditingInvestment(null);
-              setIsStockModalOpen(true);
+              setIsManualModalOpen(true);
             }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white border border-slate-700 shadow-sm transition-all"
           >
@@ -342,7 +345,7 @@ export default function InvestmentsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsStockModalOpen(true)}
+                  onClick={() => setIsManualModalOpen(true)}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white border border-slate-700 shadow-sm"
                 >
                   <LineChart className="w-4 h-4 text-sky-400" />
@@ -403,7 +406,7 @@ export default function InvestmentsPage() {
                           onClick={() => {
                             if (isStock) {
                               setEditingInvestment(inv);
-                              setIsStockModalOpen(true);
+                              setIsManualModalOpen(true);
                             } else {
                               setEditingInvestment(inv);
                               setIsManualModalOpen(true);
@@ -524,23 +527,6 @@ export default function InvestmentsPage() {
         }}
       />
 
-      {/* Stock Investment Modal */}
-      <StockModal
-        isOpen={isStockModalOpen}
-        onClose={() => {
-          setIsStockModalOpen(false);
-          setEditingInvestment(null);
-        }}
-        initialData={editingInvestment}
-        onSave={async (data) => {
-          if (editingInvestment) {
-            await editInvestment({ ...editingInvestment, ...data });
-          } else {
-            await addInvestment(data);
-          }
-        }}
-      />
-
       {/* Fast Value Update Modal */}
       <ValueUpdateModal
         isOpen={!!updateValTarget}
@@ -559,7 +545,7 @@ export default function InvestmentsPage() {
         onEdit={(inv) => {
           setEditingInvestment(inv);
           if (inv.type === 'Stocks') {
-            setIsStockModalOpen(true);
+            setIsManualModalOpen(true);
           } else {
             setIsManualModalOpen(true);
           }

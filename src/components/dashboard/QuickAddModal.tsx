@@ -78,7 +78,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose })
             </div>
             <div>
               <h4 className="text-sm font-bold text-slate-900 dark:text-white">Add Investment</h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">SIP, FD & Lumpsum</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">SIP, Lumpsum, FD, Stocks</p>
             </div>
           </button>
 

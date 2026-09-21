@@ -115,8 +115,8 @@ export const StockModal: React.FC<StockModalProps> = ({
   const profitLoss = currentValue - totalInvested;
   const returnPercent = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (isSubmitting) return;
 
     if (!selectedStock) {
@@ -178,8 +178,17 @@ export const StockModal: React.FC<StockModalProps> = ({
             Cancel
           </button>
           <button
-            type="submit"
-            form="stock-form"
+            type="button"
+            onClick={() => {
+              const form = document.getElementById('stock-form') as HTMLFormElement;
+              if (form) {
+                if (form.checkValidity()) {
+                  handleSubmit();
+                } else {
+                  form.reportValidity();
+                }
+              }
+            }}
             disabled={isSubmitting}
             className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-md shadow-sky-600/30 disabled:opacity-50"
           >
@@ -188,7 +197,7 @@ export const StockModal: React.FC<StockModalProps> = ({
         </div>
       }
     >
-      <form id="stock-form" onSubmit={handleSubmit} className="space-y-4">
+      <form id="stock-form" onSubmit={(e) => e.preventDefault()} className="space-y-4">
         {error && (
           <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-600 dark:text-rose-400">
             {error}

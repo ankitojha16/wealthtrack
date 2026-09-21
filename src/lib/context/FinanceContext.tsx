@@ -24,7 +24,7 @@ import {
   upsertRecord,
   deleteRecord,
   signInWithPassword,
-  signUpWithEmail,
+  signUpWithEmail as supabaseSignUpWithEmail,
   signOut,
 } from '@/lib/supabase/repository';
 
@@ -695,7 +695,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       return normalized;
     }
 
-    const userRecord = await signUpWithEmail(email, password);
+    const userRecord = await supabaseSignUpWithEmail(email, password);
     if (!userRecord) return null;
     const normalized: AuthUser = { id: userRecord.id, email: userRecord.email ?? null };
     setUser(normalized);

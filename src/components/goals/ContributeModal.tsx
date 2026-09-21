@@ -27,8 +27,8 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
   const newTotal = goal.currentAmount + numAmount;
   const remaining = Math.max(0, goal.targetAmount - newTotal);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (isSubmitting || numAmount <= 0) return;
 
     try {
@@ -56,17 +56,26 @@ export const ContributeModal: React.FC<ContributeModalProps> = ({
             Cancel
           </button>
           <button
-            type="submit"
-            form="contribute-form"
-            disabled={isSubmitting || numAmount <= 0}
-            className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-md shadow-sky-600/30 disabled:opacity-50"
+            type="button"
+            onClick={() => {
+              const form = document.getElementById('contribute-form') as HTMLFormElement;
+              if (form) {
+                if (form.checkValidity()) {
+                  handleSubmit();
+                } else {
+                  form.reportValidity();
+                }
+              }
+            }}
+            disabled={isSubmitting}
+            className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-md shadow-sky-600/30 transition-all disabled:opacity-50"
           >
             {isSubmitting ? 'Saving...' : 'Add Contribution'}
           </button>
         </div>
       }
     >
-      <form id="contribute-form" onSubmit={handleSubmit} className="space-y-4">
+      <form id="contribute-form" onSubmit={(e) => e.preventDefault()} className="space-y-4">
         <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
           <span className="text-xs text-slate-500 block">{goal.category}</span>
           <h4 className="text-sm font-bold text-slate-900 dark:text-white">{goal.name}</h4>

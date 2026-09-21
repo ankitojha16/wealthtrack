@@ -29,15 +29,9 @@ export const DEFAULT_INCOME_CATEGORIES: CategoryDef[] = [
 ];
 
 export const MANUAL_INVESTMENT_TYPES = [
-  'Mutual Fund',
-  'Fixed Deposit',
-  'Recurring Deposit',
-  'PPF',
-  'EPF',
-  'NPS',
-  'Gold',
-  'Bonds',
-  'Other',
+  'SIP',
+  'Lumpsum',
+  'FD',
 ] as const;
 
 export const INVESTMENT_TYPES = [...MANUAL_INVESTMENT_TYPES, 'Stocks'] as const;

@@ -33,8 +33,8 @@ export const ValueUpdateModal: React.FC<ValueUpdateModalProps> = ({
   const gain = numCurrent - investment.investedAmount;
   const returnPercent = investment.investedAmount > 0 ? (gain / investment.investedAmount) * 100 : 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (isSubmitting) return;
 
     if (isNaN(numCurrent) || numCurrent < 0) return;
@@ -63,17 +63,26 @@ export const ValueUpdateModal: React.FC<ValueUpdateModalProps> = ({
             Cancel
           </button>
           <button
-            type="submit"
-            form="value-update-form"
+            type="button"
+            onClick={() => {
+              const form = document.getElementById('value-update-form') as HTMLFormElement;
+              if (form) {
+                if (form.checkValidity()) {
+                  handleSubmit();
+                } else {
+                  form.reportValidity();
+                }
+              }
+            }}
             disabled={isSubmitting}
-            className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-md shadow-sky-600/30"
+            className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-md shadow-sky-600/30 transition-all disabled:opacity-50"
           >
-            {isSubmitting ? 'Updating...' : 'Save Current Value'}
+            {isSubmitting ? 'Saving...' : 'Save Update'}
           </button>
         </div>
       }
     >
-      <form id="value-update-form" onSubmit={handleSubmit} className="space-y-4">
+      <form id="value-update-form" onSubmit={(e) => e.preventDefault()} className="space-y-4">
         <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
           <span className="text-xs text-slate-500 block">{investment.type}</span>
           <h4 className="text-sm font-bold text-slate-900 dark:text-white">{investment.name}</h4>

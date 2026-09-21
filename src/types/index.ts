@@ -45,6 +45,11 @@ export interface CategoryBudget {
 }
 
 export type InvestmentType =
+  | 'SIP'
+  | 'Lumpsum'
+  | 'FD'
+  | 'Stocks'
+  // Legacy aliases — kept so existing stored records remain readable
   | 'Mutual Fund'
   | 'Fixed Deposit'
   | 'Recurring Deposit'
@@ -54,13 +59,7 @@ export type InvestmentType =
   | 'Gold'
   | 'Bonds'
   | 'Other'
-  | 'Stocks'
-  // Legacy aliases — kept so existing stored records remain readable
-  | 'SIP'
-  | 'Lumpsum'
   | 'Fixed Deposit (FD)'
-  | 'Recurring Deposit (RD)'
-  | 'FD'
   | 'RD'
   | 'Cash'
   | 'Other Investment';

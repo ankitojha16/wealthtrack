@@ -90,50 +90,6 @@ export default function SettingsPage() {
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {/* Currency */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Default Currency & Symbol
-            </label>
-            <select
-              value={settings.currency}
-              onChange={(e) => {
-                const cur = e.target.value;
-                const symbols: Record<string, string> = {
-                  INR: '₹',
-                  USD: '$',
-                  EUR: '€',
-                  GBP: '£',
-                };
-                updateSettings({ currency: cur, currencySymbol: symbols[cur] || '₹' });
-              }}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
-            >
-              <option value="INR">Indian Rupee (INR - ₹)</option>
-              <option value="USD">US Dollar (USD - $)</option>
-              <option value="EUR">Euro (EUR - €)</option>
-              <option value="GBP">British Pound (GBP - £)</option>
-            </select>
-            <span className="text-[10px] text-slate-400 block mt-1">
-              Current symbol: <strong className="text-sky-600">{settings.currencySymbol}</strong>
-            </span>
-          </div>
-
-          {/* Number Format */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Numbering System
-            </label>
-            <select
-              value={settings.numberFormat}
-              onChange={(e) => updateSettings({ numberFormat: e.target.value as any })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
-            >
-              <option value="indian">Indian System (e.g. ₹1,00,000 / Lakhs / Crores)</option>
-              <option value="international">International System (e.g. $100,000 / Millions / Billions)</option>
-            </select>
-          </div>
-
           {/* Theme */}
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -173,33 +129,6 @@ export default function SettingsPage() {
               >
                 Auto
               </button>
-            </div>
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Accent Color
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {(['sky', 'violet', 'emerald', 'rose'] as const).map((accent) => (
-                <button
-                  key={accent}
-                  type="button"
-                  onClick={() => updateSettings({ accentColor: accent })}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
-                    settings.accentColor === accent
-                      ? 'border-slate-900 dark:border-white bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                      : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  <span className={`inline-block h-3 w-3 rounded-full ${
-                    accent === 'sky' ? 'bg-sky-500' :
-                    accent === 'violet' ? 'bg-violet-500' :
-                    accent === 'emerald' ? 'bg-emerald-500' : 'bg-rose-500'
-                  }`} />
-                  {accent.charAt(0).toUpperCase() + accent.slice(1)}
-                </button>
-              ))}
             </div>
           </div>
         </div>

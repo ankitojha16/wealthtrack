@@ -80,7 +80,10 @@ export async function upsertRecord<T extends { id?: string; user_id?: string | n
   if (error) {
     const message = `[supabase:${table}] upsert failed: ${error.message}`;
     console.error(message, { table, row: payload, error });
-    throw new Error(message);
+    if (typeof window !== 'undefined') {
+      alert(`Database Error: ${error.message}`);
+    }
+    throw new Error(error.message);
   }
 
   return (data ?? payload) as T;

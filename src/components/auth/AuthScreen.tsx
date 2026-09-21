@@ -15,9 +15,7 @@ export function AuthScreen() {
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -49,7 +47,7 @@ export function AuthScreen() {
     }
 
     if (mode === 'signup') {
-      const validation = validateSignupCredentials(email.trim(), password, confirmPassword);
+      const validation = validateSignupCredentials(email.trim(), password, password);
       if (!validation.ok) {
         setError(validation.message);
         return;
@@ -64,7 +62,7 @@ export function AuthScreen() {
       if (!hasSupabaseConfig()) {
         result = mode === 'login'
           ? signInLocal(email.trim(), password)
-          : signUpLocal(email.trim(), password, confirmPassword);
+          : signUpLocal(email.trim(), password, password);
       } else {
         result = mode === 'login'
           ? await signInWithEmail(email.trim(), password)
@@ -204,59 +202,20 @@ export function AuthScreen() {
               </div>
             </div>
 
-            {mode === 'signup' && (
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">Confirm password</label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter your password"
-                    className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    aria-label={showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'}
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-            )}
 
             <div className="flex items-center justify-between text-[11px]">
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                className="font-semibold text-sky-600 dark:text-sky-400 hover:underline"
-              >
-                Forgot password?
-              </button>
+              {mode === 'login' ? (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+                >
+                  Forgot password?
+                </button>
+              ) : (
+                <span />
+              )}
               <span className="text-slate-400">Secure sync enabled</span>
-            </div>
-
-            <div className="space-y-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 p-2.5">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-                <span>App colour</span>
-                <span>{accentLabel} accent</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {accentOptions.map((accent) => (
-                  <button
-                    key={accent.value}
-                    type="button"
-                    onClick={() => updateSettings({ accentColor: accent.value })}
-                    className={`h-7 w-7 rounded-full border-2 transition ${accent.swatch} ${settings.accentColor === accent.value ? 'border-slate-900 dark:border-white scale-110 ring-2 ring-offset-1 ring-slate-200 dark:ring-slate-700' : 'border-white dark:border-slate-800'}`}
-                    aria-label={`Choose ${accent.value} accent color`}
-                    title={`Choose ${accent.value} accent color`}
-                  />
-                ))}
-              </div>
             </div>
 
             <button

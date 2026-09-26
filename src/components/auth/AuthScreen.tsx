@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useFinance } from '@/lib/context/FinanceContext';
 import { hasSupabaseConfig } from '@/lib/supabase/client';
-import { signInLocal, signUpLocal } from '@/lib/auth/localAuth';
 import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, KeyRound, CheckCircle2 } from 'lucide-react';
 import { validateSignupCredentials } from '@/lib/auth/localAuth';
 
@@ -79,17 +78,9 @@ export function AuthScreen() {
     setIsSubmitting(true);
 
     try {
-      let result;
-
-      if (!hasSupabaseConfig()) {
-        result = mode === 'login'
-          ? signInLocal(email.trim(), password)
-          : signUpLocal(email.trim(), password, password);
-      } else {
-        result = mode === 'login'
-          ? await signInWithEmail(email.trim(), password)
-          : await signUpWithEmail(email.trim(), password);
-      }
+      const result = mode === 'login'
+        ? await signInWithEmail(email.trim(), password)
+        : await signUpWithEmail(email.trim(), password);
 
       if (!result) {
         setError(mode === 'login' ? 'Invalid email or password.' : 'Unable to create account. Please try again.');
@@ -253,7 +244,9 @@ export function AuthScreen() {
               ) : (
                 <span />
               )}
-              <span className="text-slate-400">Secure sync enabled</span>
+              <span className="text-slate-400">
+                {hasSupabaseConfig() ? 'Secure sync enabled' : 'Saved on this device only'}
+              </span>
             </div>
 
             <button
@@ -273,7 +266,7 @@ export function AuthScreen() {
           </form>
 
           <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-[11px] text-slate-500 dark:text-slate-400">
-            <div className="flex items-center gap-2"><KeyRound className="w-3.5 h-3.5 text-sky-500" /> <span>Password reset and secure login are enabled for saved financial records.</span></div>
+            <div className="flex items-center gap-2"><KeyRound className="w-3.5 h-3.5 text-sky-500" /> <span>{hasSupabaseConfig() ? 'Password reset and secure login are enabled for saved financial records.' : 'Your account and financial data are stored on this device only.'}</span></div>
           </div>
         </div>
       </div>

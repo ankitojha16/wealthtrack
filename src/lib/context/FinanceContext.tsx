@@ -192,6 +192,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const accentMap = {
+      default: '#0ea5e9',
+      green: '#10b981',
+      blue: '#0ea5e9',
+      purple: '#8b5cf6',
+      orange: '#f59e0b',
       sky: '#0ea5e9',
       violet: '#8b5cf6',
       emerald: '#10b981',
@@ -199,6 +204,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     } as const;
 
     const applyTheme = () => {
+      const accentKey = settings.accentColor && accentMap[settings.accentColor as keyof typeof accentMap]
+        ? settings.accentColor
+        : 'default';
       const shouldUseDark = settings.theme === 'dark'
         ? true
         : settings.theme === 'light'
@@ -206,8 +214,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           : media.matches;
 
       root.classList.toggle('dark', shouldUseDark);
-      root.style.setProperty('--wealthtrack-accent', accentMap[settings.accentColor] ?? accentMap.sky);
-      root.style.setProperty('--wealthtrack-accent-soft', `${accentMap[settings.accentColor] ?? accentMap.sky}22`);
+      root.style.setProperty('--wealthtrack-accent', accentMap[accentKey as keyof typeof accentMap]);
+      root.style.setProperty('--wealthtrack-accent-soft', `${accentMap[accentKey as keyof typeof accentMap]}22`);
     };
 
     applyTheme();

@@ -195,12 +195,23 @@ export interface MonthlySnapshot {
   timestamp: number;
 }
 
+export type AccentColor =
+  | 'default'
+  | 'green'
+  | 'blue'
+  | 'purple'
+  | 'orange'
+  | 'sky'
+  | 'violet'
+  | 'emerald'
+  | 'rose';
+
 export interface UserSettings {
   currency: string; // 'INR', 'USD', 'EUR', 'GBP'
   currencySymbol: string; // '₹', '$', '€', '£'
   numberFormat: 'indian' | 'international';
   theme: 'light' | 'dark' | 'system';
-  accentColor: 'sky' | 'violet' | 'emerald' | 'rose';
+  accentColor: AccentColor;
   supportEmail: string;
 }
 

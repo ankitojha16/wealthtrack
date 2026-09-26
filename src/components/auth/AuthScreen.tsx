@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useFinance } from '@/lib/context/FinanceContext';
@@ -17,29 +17,51 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const isAuthCoolingDown = cooldownUntil !== null && Date.now() < cooldownUntil;
+
+  useEffect(() => {
+    if (cooldownUntil === null) return;
+
+    const timeout = window.setTimeout(() => setCooldownUntil(null), Math.max(0, cooldownUntil - Date.now()));
+    return () => window.clearTimeout(timeout);
+  }, [cooldownUntil]);
+
   const accentClasses = {
+    default: 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-600/30',
+    green: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30',
+    blue: 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-600/30',
+    purple: 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-600/30',
+    orange: 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-600/30',
     sky: 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-600/30',
     violet: 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-600/30',
     emerald: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30',
     rose: 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/30',
   } as const;
 
-  const accentLabel = settings.accentColor ? settings.accentColor.charAt(0).toUpperCase() + settings.accentColor.slice(1) : 'Sky';
+  const accentLabel = settings.accentColor ? settings.accentColor.charAt(0).toUpperCase() + settings.accentColor.slice(1) : 'Default';
 
   const accentOptions = [
-    { value: 'sky', swatch: 'bg-sky-500' },
-    { value: 'violet', swatch: 'bg-violet-500' },
-    { value: 'emerald', swatch: 'bg-emerald-500' },
-    { value: 'rose', swatch: 'bg-rose-500' },
+    { value: 'default', swatch: 'bg-slate-600' },
+    { value: 'green', swatch: 'bg-emerald-500' },
+    { value: 'blue', swatch: 'bg-sky-500' },
+    { value: 'purple', swatch: 'bg-violet-500' },
+    { value: 'orange', swatch: 'bg-orange-500' },
   ] as const;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (isAuthCoolingDown) {
+      const remainingSeconds = Math.ceil((cooldownUntil! - Date.now()) / 1000);
+      setError(`Too many attempts. Please wait ${remainingSeconds}s before trying again.`);
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password.');
@@ -77,13 +99,24 @@ export function AuthScreen() {
       setSuccess(mode === 'login' ? 'Signed in successfully.' : 'Account created. You can now continue.');
       router.push('/');
     } catch (err: any) {
-      setError(err?.message || 'Authentication failed. Please try again.');
+      const userMessage = err?.message || 'Authentication failed. Please try again.';
+      setError(userMessage);
+
+      if (userMessage.toLowerCase().includes('too many attempts') || userMessage.toLowerCase().includes('rate limit') || userMessage.toLowerCase().includes('too many requests')) {
+        setCooldownUntil(Date.now() + 30000);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleForgotPassword = async () => {
+    if (isAuthCoolingDown) {
+      const remainingSeconds = Math.ceil((cooldownUntil! - Date.now()) / 1000);
+      setError(`Too many attempts. Please wait ${remainingSeconds}s before trying again.`);
+      return;
+    }
+
     if (!email.trim()) {
       setError('Enter your email address first to receive a password reset link.');
       return;
@@ -100,7 +133,12 @@ export function AuthScreen() {
       setSuccess('Password reset email sent. Check your inbox and follow the reset link.');
       setError('');
     } catch (err: any) {
-      setError(err?.message || 'Unable to send reset email.');
+      const userMessage = err?.message || 'Unable to send reset email.';
+      setError(userMessage);
+
+      if (userMessage.toLowerCase().includes('too many attempts') || userMessage.toLowerCase().includes('rate limit') || userMessage.toLowerCase().includes('too many requests')) {
+        setCooldownUntil(Date.now() + 30000);
+      }
     }
   };
 
@@ -220,10 +258,16 @@ export function AuthScreen() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isAuthCoolingDown}
               className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition disabled:opacity-60 ${accentClasses[settings.accentColor || 'sky']}`}
             >
-              {isSubmitting ? (mode === 'login' ? 'Signing in...' : 'Creating account...') : mode === 'login' ? 'Login to WealthTrack' : 'Create account'}
+              {isSubmitting
+                ? (mode === 'login' ? 'Signing in...' : 'Creating account...')
+                : isAuthCoolingDown
+                  ? 'Try again soon'
+                  : mode === 'login'
+                    ? 'Login to WealthTrack'
+                    : 'Create account'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

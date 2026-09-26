@@ -18,7 +18,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   currencySymbol: '₹',
   numberFormat: 'indian',
   theme: 'system',
-  accentColor: 'sky',
+  accentColor: 'default',
   supportEmail: 'ankit.ojha1666@gmail.com',
 };
 

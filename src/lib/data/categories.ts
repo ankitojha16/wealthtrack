@@ -36,6 +36,14 @@ export const MANUAL_INVESTMENT_TYPES = [
 
 export const INVESTMENT_TYPES = [...MANUAL_INVESTMENT_TYPES, 'Stocks'] as const;
 
+export const ACCENT_COLOR_OPTIONS = [
+  { value: 'default', label: 'Default', swatch: 'bg-slate-600' },
+  { value: 'green', label: 'Green', swatch: 'bg-emerald-500' },
+  { value: 'blue', label: 'Blue', swatch: 'bg-sky-500' },
+  { value: 'purple', label: 'Purple', swatch: 'bg-violet-500' },
+  { value: 'orange', label: 'Orange', swatch: 'bg-orange-500' },
+] as const;
+
 export const GOAL_TYPES = [
   'Emergency Fund',
   'Education',

@@ -10,10 +10,46 @@ export async function getActiveUser(): Promise<UserSession | null> {
   return { id: user.id, email: user.email ?? null };
 }
 
+function toUserFriendlyAuthError(error: { message?: string; name?: string; status?: number; code?: string } | null | undefined, action: 'login' | 'signup' | 'reset') {
+  const message = error?.message?.toLowerCase() ?? '';
+
+  if (message.includes('invalid login credentials') || message.includes('invalid credentials') || message.includes('wrong password')) {
+    return 'Invalid email or password. Please check your credentials and try again.';
+  }
+
+  if (message.includes('email not confirmed') || message.includes('user not confirmed') || error?.code === 'email_not_confirmed' || error?.code === 'user_not_found') {
+    return 'Your email is not confirmed yet. Check your inbox for the confirmation link or request a new one.';
+  }
+
+  if (message.includes('too many requests') || message.includes('rate limit') || error?.status === 429) {
+    return 'Too many attempts. Please wait a moment before trying again.';
+  }
+
+  if (message.includes('network') || error?.name === 'TypeError') {
+    return 'Network error. Please check your connection and try again.';
+  }
+
+  if (action === 'signup' && (message.includes('signup is disabled') || message.includes('signups not allowed'))) {
+    return 'New signups are temporarily disabled. Please try again later.';
+  }
+
+  if (action === 'reset' && (message.includes('user not found') || message.includes('no user found'))) {
+    return 'No account is associated with that email address.';
+  }
+
+  if (message.includes('password') && (message.includes('weak') || message.includes('validation'))) {
+    return 'Password does not meet the platform requirements. Please choose a stronger password.';
+  }
+
+  return error?.message || 'Authentication failed. Please try again.';
+}
+
 export async function signInWithPassword(email: string, password: string): Promise<UserSession | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  if (error) {
+    throw new Error(toUserFriendlyAuthError(error, 'login'));
+  }
   if (!data.user) return null;
   return { id: data.user.id, email: data.user.email ?? null };
 }
@@ -21,7 +57,9 @@ export async function signInWithPassword(email: string, password: string): Promi
 export async function signUpWithEmail(email: string, password: string): Promise<UserSession | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error) throw error;
+  if (error) {
+    throw new Error(toUserFriendlyAuthError(error, 'signup'));
+  }
   if (!data.session && data.user) {
     throw new Error('Please check your email to verify your account before logging in.');
   }
@@ -40,7 +78,7 @@ export async function resetPasswordForEmail(email: string): Promise<void> {
     redirectTo: `${window.location.origin}/settings`,
   });
   if (error) {
-    throw new Error(error.message || 'Unable to send password reset email.');
+    throw new Error(toUserFriendlyAuthError(error, 'reset'));
   }
 }
 
@@ -85,9 +123,6 @@ export async function upsertRecord<T extends { id?: string; user_id?: string | n
   if (error) {
     const message = `[supabase:${table}] upsert failed: ${error.message}`;
     console.error(message, { table, row: payload, error });
-    if (typeof window !== 'undefined') {
-      alert(`Database Error: ${error.message}`);
-    }
     throw new Error(error.message);
   }
 

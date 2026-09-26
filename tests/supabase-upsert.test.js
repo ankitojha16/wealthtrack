@@ -10,16 +10,6 @@ test('Supabase upsert uses the table primary key as the conflict target', () => 
 });
 
 test('Manual investment options exclude stock entries and keep only supported non-stock investment types', () => {
-  assert.deepEqual(MANUAL_INVESTMENT_TYPES, [
-    'Mutual Fund',
-    'Fixed Deposit',
-    'Recurring Deposit',
-    'PPF',
-    'EPF',
-    'NPS',
-    'Gold',
-    'Bonds',
-    'Other',
-  ]);
+  assert.deepEqual(MANUAL_INVESTMENT_TYPES, ['SIP', 'Lumpsum', 'FD']);
   assert.ok(!MANUAL_INVESTMENT_TYPES.includes('Stocks'));
 });

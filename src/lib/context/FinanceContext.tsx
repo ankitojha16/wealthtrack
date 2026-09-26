@@ -117,7 +117,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     try {
       const localSessionUser = !hasSupabaseConfig() ? getLocalSessionUser() : null;
       const activeUser = hasSupabaseConfig() ? await getActiveUser() : localSessionUser;
-      const userId = activeUser?.id ?? null;
+      const userId = hasSupabaseConfig() ? activeUser?.id ?? null : null;
 
       if (hasSupabaseConfig() && !userId && supabase) {
         const { data: { session } } = await supabase.auth.getSession();
@@ -296,7 +296,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       timestamp: Date.now(),
     };
 
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<MonthlySnapshot & { user_id: string }>('snapshots', { ...snapshot, user_id: user.id }, user.id);
       setSnapshots((prev) => {
         const index = prev.findIndex((s) => s.id === saved.id || s.monthYear === saved.monthYear);
@@ -325,7 +325,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       updatedAt: now,
     };
 
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Transaction & { user_id: string }>('transactions', { ...newTx, user_id: user.id }, user.id);
       setTransactions((prev) => [saved, ...prev]);
       return saved;
@@ -338,7 +338,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editTransaction = async (tx: Transaction) => {
     const updated: Transaction = { ...tx, updatedAt: Date.now() };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Transaction & { user_id: string }>('transactions', { ...updated, user_id: user.id }, user.id);
       setTransactions((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
       return saved;
@@ -349,7 +349,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeTransaction = async (id: string) => {
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       await deleteRecord('transactions', id, user.id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
       return;
@@ -365,7 +365,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       monthlyLimit,
       spent: 0,
     };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<CategoryBudget & { user_id: string }>('budgets', { ...budget, user_id: user.id }, user.id);
       setBudgets((prev) => {
         const idx = prev.findIndex((b) => b.category === category);
@@ -398,7 +398,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       lastUpdatedAt: getCurrentDateString(),
       createdAt: now,
     };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Investment & { user_id: string }>('investments', { ...newInv, user_id: user.id }, user.id);
       setInvestments((prev) => [saved, ...prev]);
       return saved;
@@ -410,7 +410,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editInvestment = async (inv: Investment) => {
     const updated: Investment = { ...inv, lastUpdatedAt: getCurrentDateString() };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Investment & { user_id: string }>('investments', { ...updated, user_id: user.id }, user.id);
       setInvestments((prev) => prev.map((i) => (i.id === saved.id ? saved : i)));
       return saved;
@@ -428,7 +428,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       currentValue,
       lastUpdatedAt: getCurrentDateString(),
     };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       await upsertRecord<Investment & { user_id: string }>('investments', { ...updated, user_id: user.id }, user.id);
       setInvestments((prev) => prev.map((i) => (i.id === id ? updated : i)));
       return;
@@ -438,7 +438,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeInvestment = async (id: string) => {
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       await deleteRecord('investments', id, user.id);
       setInvestments((prev) => prev.filter((i) => i.id !== id));
       return;
@@ -455,7 +455,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
       updatedAt: now,
     };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Goal & { user_id: string }>('goals', { ...newGoal, user_id: user.id }, user.id);
       setGoals((prev) => [saved, ...prev]);
       return saved;
@@ -467,7 +467,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editGoal = async (goal: Goal) => {
     const updated: Goal = { ...goal, updatedAt: Date.now() };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Goal & { user_id: string }>('goals', { ...updated, user_id: user.id }, user.id);
       setGoals((prev) => prev.map((g) => (g.id === saved.id ? saved : g)));
       return saved;
@@ -485,7 +485,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       currentAmount: Math.min(target.targetAmount, target.currentAmount + amount),
       updatedAt: Date.now(),
     };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Goal & { user_id: string }>('goals', { ...updated, user_id: user.id }, user.id);
       setGoals((prev) => prev.map((g) => (g.id === id ? saved : g)));
       return;
@@ -495,7 +495,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeGoal = async (id: string) => {
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       await deleteRecord('goals', id, user.id);
       setGoals((prev) => prev.filter((g) => g.id !== id));
       return;
@@ -512,7 +512,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
       updatedAt: now,
     };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Loan & { user_id: string }>('loans', { ...newLoan, user_id: user.id }, user.id);
       setLoans((prev) => [saved, ...prev]);
       return saved;
@@ -524,7 +524,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editLoan = async (loan: Loan) => {
     const updated: Loan = { ...loan, updatedAt: Date.now() };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Loan & { user_id: string }>('loans', { ...updated, user_id: user.id }, user.id);
       setLoans((prev) => prev.map((l) => (l.id === saved.id ? saved : l)));
       return saved;
@@ -549,7 +549,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       emisRemaining: newRemaining,
       updatedAt: Date.now(),
     };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Loan & { user_id: string }>('loans', { ...updated, user_id: user.id }, user.id);
       setLoans((prev) => prev.map((l) => (l.id === id ? saved : l)));
       return;
@@ -559,7 +559,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeLoan = async (id: string) => {
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       await deleteRecord('loans', id, user.id);
       setLoans((prev) => prev.filter((l) => l.id !== id));
       return;
@@ -577,7 +577,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
     };
 
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Asset & { user_id: string }>('assets', { ...newAsset, user_id: user.id }, user.id);
       setAssets((prev) => [saved, ...prev]);
       return saved;
@@ -590,7 +590,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editAsset = async (asset: Asset) => {
     const updated: Asset = { ...asset, lastUpdatedAt: getCurrentDateString() };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Asset & { user_id: string }>('assets', { ...updated, user_id: user.id }, user.id);
       setAssets((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
       return saved;
@@ -601,7 +601,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeAsset = async (id: string) => {
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       await deleteRecord('assets', id, user.id);
       setAssets((prev) => prev.filter((a) => a.id !== id));
       return;
@@ -619,7 +619,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
     };
 
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Liability & { user_id: string }>('liabilities', { ...newLiab, user_id: user.id }, user.id);
       setLiabilities((prev) => [saved, ...prev]);
       return saved;
@@ -632,7 +632,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editLiability = async (liability: Liability) => {
     const updated: Liability = { ...liability, lastUpdatedAt: getCurrentDateString() };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<Liability & { user_id: string }>('liabilities', { ...updated, user_id: user.id }, user.id);
       setLiabilities((prev) => prev.map((l) => (l.id === saved.id ? saved : l)));
       return saved;
@@ -643,7 +643,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeLiability = async (id: string) => {
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       await deleteRecord('liabilities', id, user.id);
       setLiabilities((prev) => prev.filter((l) => l.id !== id));
       return;
@@ -654,7 +654,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     const updated: UserSettings = { ...settings, ...newSettings };
-    if (user?.id) {
+    if (hasSupabaseConfig() && user?.id) {
       await upsertRecord<{ key: string; value: UserSettings; user_id: string }>('app_settings', {
         key: 'app_settings',
         value: updated,

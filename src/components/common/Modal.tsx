@@ -41,7 +41,7 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
@@ -51,7 +51,7 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Modal Card */}
       <div
-        className={`relative w-full ${maxWidthClass} max-w-full sm:max-w-[var(--modal-width,28rem)] bg-white dark:bg-slate-900 rounded-t-[1.5rem] sm:rounded-2xl shadow-2xl border-t sm:border border-slate-200/80 dark:border-slate-800 z-10 animate-fade-in max-h-[92dvh] sm:max-h-[88vh] flex flex-col overflow-hidden sm:my-8`}
+        className={`relative w-full ${maxWidthClass} max-w-full bg-white dark:bg-slate-900 rounded-t-[1.5rem] sm:rounded-2xl shadow-2xl border-t sm:border border-slate-200/80 dark:border-slate-800 z-10 animate-fade-in max-h-[92dvh] sm:max-h-[calc(100dvh-3rem)] flex flex-col overflow-hidden`}
         role="dialog"
         aria-modal="true"
       >
@@ -67,7 +67,7 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        <div className={`flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 pt-2 ${!footer ? 'pb-[calc(1rem+env(safe-area-inset-bottom))]' : ''}`}>
+        <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 pt-2 ${!footer ? 'pb-[calc(1rem+env(safe-area-inset-bottom))]' : ''}`}>
           {children}
         </div>
 

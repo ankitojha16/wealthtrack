@@ -17,14 +17,13 @@ import * as db from '@/lib/db';
 import { calculateFinancialHealthScore } from '@/lib/calculations';
 import { getCurrentDateString, getCurrentMonthYearString } from '@/lib/formatters';
 import { supabase, hasSupabaseConfig } from '@/lib/supabase/client';
-import { getLocalSessionUser, signInLocal, signOutLocal, signUpLocal } from '@/lib/auth/localAuth';
+import { getLocalSessionUser, resetLocalPassword, signInLocal, signOutLocal, signUpLocal } from '@/lib/auth/localAuth';
 import {
   getActiveUser,
   listRecords,
   upsertRecord,
   deleteRecord,
   signInWithPassword,
-  signUpWithEmail as supabaseSignUpWithEmail,
   signOut,
 } from '@/lib/supabase/repository';
 
@@ -93,7 +92,8 @@ interface FinanceContextType {
   refreshData: () => Promise<void>;
   recordCurrentSnapshot: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<AuthUser | null>;
-  signUpWithEmail: (email: string, password: string) => Promise<AuthUser | null>;
+  signUpWithEmail: (email: string, password: string, favoriteFruit: string) => Promise<AuthUser | null>;
+  resetPasswordWithFruit: (email: string, favoriteFruit: string, newPassword: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
@@ -693,9 +693,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     return normalized;
   };
 
-  const signUpWithEmail = async (email: string, password: string): Promise<AuthUser | null> => {
+  const signUpWithEmail = async (email: string, password: string, favoriteFruit: string): Promise<AuthUser | null> => {
     if (!hasSupabaseConfig()) {
-      const localUser = signUpLocal(email, password);
+      const localUser = signUpLocal(email, password, password, favoriteFruit);
       if (!localUser) return null;
       const normalized: AuthUser = { id: localUser.id, email: localUser.email ?? null };
       setUser(normalized);
@@ -703,12 +703,45 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       return normalized;
     }
 
-    const userRecord = await supabaseSignUpWithEmail(email, password);
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, favoriteFruit }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Unable to create the account.');
+
+    const userRecord = await signInWithPassword(email, password);
     if (!userRecord) return null;
     const normalized: AuthUser = { id: userRecord.id, email: userRecord.email ?? null };
     setUser(normalized);
     await refreshData();
     return normalized;
+  };
+
+  const resetPasswordWithFruit = async (email: string, favoriteFruit: string, newPassword: string) => {
+    if (!hasSupabaseConfig()) {
+      const reset = resetLocalPassword(email, favoriteFruit, newPassword);
+      if (!reset) throw new Error('The email or favorite fruit did not match.');
+      const localUser = signInLocal(email, newPassword);
+      if (!localUser) throw new Error('Password changed, but automatic sign-in failed. Please log in.');
+      setUser({ id: localUser.id, email: localUser.email });
+      await refreshData();
+      return;
+    }
+
+    const response = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, favoriteFruit, newPassword }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Unable to reset password.');
+
+    const userRecord = await signInWithPassword(email, newPassword);
+    if (!userRecord) throw new Error('Password changed, but automatic sign-in failed. Please log in.');
+    setUser({ id: userRecord.id, email: userRecord.email ?? null });
+    await refreshData();
   };
 
   const signOutUser = async () => {
@@ -779,6 +812,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         recordCurrentSnapshot,
         signInWithEmail,
         signUpWithEmail,
+        resetPasswordWithFruit,
         signOutUser,
       }}
     >

@@ -14,6 +14,7 @@ export interface StockQuote {
   lastUpdated: string;
   source: 'api' | 'manual';
   provider?: string;
+  message?: string;
   status: 'success' | 'failed' | 'unavailable';
 }
 
@@ -71,6 +72,7 @@ export async function fetchStockQuote(symbol: string, exchange = 'NSE'): Promise
       price: cached ? cached.quote.price : 0,
       lastUpdated: new Date().toLocaleTimeString(),
       source: 'api',
+      message: data?.message || 'The quote service did not return a current price.',
       status: 'unavailable',
     };
   } catch (err) {
@@ -81,6 +83,7 @@ export async function fetchStockQuote(symbol: string, exchange = 'NSE'): Promise
       price: cached ? cached.quote.price : 0,
       lastUpdated: new Date().toLocaleTimeString(),
       source: 'api',
+      message: err instanceof Error ? err.message : 'The quote service could not be reached.',
       status: 'unavailable',
     };
   }

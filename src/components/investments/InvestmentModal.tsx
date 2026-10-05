@@ -14,6 +14,7 @@ interface InvestmentModalProps {
   onClose: () => void;
   onSave: (inv: Omit<Investment, 'id' | 'createdAt' | 'lastUpdatedAt'>) => Promise<void>;
   initialData?: Investment | null;
+  initialType?: InvestmentType;
 }
 
 export const InvestmentModal: React.FC<InvestmentModalProps> = ({
@@ -21,8 +22,9 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
   onClose,
   onSave,
   initialData,
+  initialType = 'SIP',
 }) => {
-  const [type, setType] = useState<InvestmentType>('SIP');
+  const [type, setType] = useState<InvestmentType>(initialType);
   
   // Generic / SIP / Lumpsum / FD
   const [amount, setAmount] = useState('');
@@ -40,6 +42,7 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
   const [purchasePrice, setPurchasePrice] = useState('');
   const [currentPrice, setCurrentPrice] = useState('');
   const [quoteStatus, setQuoteStatus] = useState<'idle' | 'loading' | 'success' | 'unavailable'>('idle');
+  const [quoteMessage, setQuoteMessage] = useState('');
   const [apiProvider, setApiProvider] = useState('');
 
   const [error, setError] = useState('');
@@ -59,6 +62,7 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
         setPurchasePrice(initialData.purchasePrice?.toString() || '');
         setCurrentPrice(initialData.currentPrice?.toString() || '');
         setQuoteStatus(initialData.apiStatus === 'success' ? 'success' : 'idle');
+        setQuoteMessage('');
       } else {
         setAmount(initialData.investedAmount.toString());
         setCurrentValue(initialData.currentValue.toString());
@@ -75,14 +79,14 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
         setInterestRate(initialData.interestRate?.toString() || '');
       }
     } else {
-      resetFields();
+      resetFields(initialType);
     }
     setError('');
     setIsSubmitting(false);
-  }, [initialData, isOpen]);
+  }, [initialData, initialType, isOpen]);
 
-  const resetFields = () => {
-    setType('SIP');
+  const resetFields = (nextType: InvestmentType = 'SIP') => {
+    setType(nextType);
     setAmount('');
     setCurrentValue('');
     setStartMonthYear('');
@@ -96,6 +100,7 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
     setPurchasePrice('');
     setCurrentPrice('');
     setQuoteStatus('idle');
+    setQuoteMessage('');
   };
 
   // Stock search effect
@@ -123,11 +128,13 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
     if (quote.status === 'success' && quote.price > 0) {
       setCurrentPrice(quote.price.toString());
       setQuoteStatus('success');
+      setQuoteMessage('');
       if (quote.provider) setApiProvider(quote.provider);
       if (!purchasePrice) setPurchasePrice(quote.price.toString());
     } else {
       setCurrentPrice('');
       setQuoteStatus('unavailable');
+      setQuoteMessage(quote.message || 'Live quote service is unavailable.');
     }
   };
 
@@ -270,7 +277,9 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? 'Edit Investment' : 'Add Investment'}
+      title={initialData
+        ? initialData.type === 'Stocks' ? 'Edit Stock Position' : 'Edit Investment'
+        : type === 'Stocks' ? 'Add Stock' : 'Add Investment'}
       maxWidthClass="max-w-md"
       footer={
         <div className="flex gap-3">
@@ -449,13 +458,15 @@ export const InvestmentModal: React.FC<InvestmentModalProps> = ({
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-[11px]">
                   {quoteStatus === 'success' ? (
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-emerald-600 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Live price available</span>
+                      <span className="font-semibold text-emerald-600 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Latest EOD price</span>
                       <span className="font-bold">₹{Number(currentPrice || 0).toLocaleString()}</span>
                     </div>
                   ) : quoteStatus === 'loading' ? (
-                    <span className="text-sky-600 animate-pulse">Fetching live market price...</span>
+                    <span className="text-sky-600 animate-pulse">Fetching latest market close...</span>
                   ) : (
-                    <span className="text-amber-600">Market price unavailable. Add manually.</span>
+                    <span className="text-amber-700 dark:text-amber-400">
+                      Market price unavailable. {quoteMessage} You can enter the price manually.
+                    </span>
                   )}
                 </div>
 

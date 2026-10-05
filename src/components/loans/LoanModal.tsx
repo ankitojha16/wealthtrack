@@ -22,6 +22,7 @@ export const LoanModal: React.FC<LoanModalProps> = ({
   const [name, setName] = useState('');
   const [type, setType] = useState<LoanType>('Personal Loan');
   const [outstandingAmount, setOutstandingAmount] = useState('');
+  const [isOutstandingAutoFilled, setIsOutstandingAutoFilled] = useState(true);
   const [monthlyEmi, setMonthlyEmi] = useState('');
   const [emisRemaining, setEmisRemaining] = useState('');
   const [interestRate, setInterestRate] = useState('');
@@ -32,7 +33,7 @@ export const LoanModal: React.FC<LoanModalProps> = ({
   const numEmi = parseFloat(monthlyEmi) || 0;
   const numRemaining = parseInt(emisRemaining, 10) || 0;
   const totalRemainingPayable = numEmi * numRemaining;
-  const effectiveOutstanding = numOutstanding > 0 ? numOutstanding : totalRemainingPayable;
+  const effectiveOutstanding = isOutstandingAutoFilled ? totalRemainingPayable : numOutstanding;
   const displayedRemaining = numEmi > 0 && numRemaining > 0 ? totalRemainingPayable : 0;
 
   useEffect(() => {
@@ -42,11 +43,15 @@ export const LoanModal: React.FC<LoanModalProps> = ({
       setOutstandingAmount(initialData.outstandingAmount.toString());
       setMonthlyEmi(initialData.monthlyEmi.toString());
       setEmisRemaining(initialData.emisRemaining.toString());
+      setIsOutstandingAutoFilled(
+        initialData.outstandingAmount === initialData.monthlyEmi * initialData.emisRemaining
+      );
       setInterestRate(initialData.interestRate?.toString() || '');
     } else {
       setName('');
       setType('Personal Loan');
       setOutstandingAmount('');
+      setIsOutstandingAutoFilled(true);
       setMonthlyEmi('');
       setEmisRemaining('');
       setInterestRate('');
@@ -56,15 +61,15 @@ export const LoanModal: React.FC<LoanModalProps> = ({
   }, [initialData, isOpen]);
 
   useEffect(() => {
-    if (numEmi <= 0 || numRemaining <= 0) return;
-
-    const nextValue = String(totalRemainingPayable);
-    const isEmptyOrSame = !outstandingAmount || Number(outstandingAmount) <= 0 || Number(outstandingAmount) === totalRemainingPayable;
-
-    if (isEmptyOrSame && outstandingAmount !== nextValue) {
-      setOutstandingAmount(nextValue);
+    if (!isOutstandingAutoFilled) return;
+    if (!monthlyEmi || !emisRemaining) {
+      setOutstandingAmount('');
+      return;
     }
-  }, [numEmi, numRemaining, outstandingAmount, totalRemainingPayable]);
+    if (numEmi <= 0 || numRemaining < 0) return;
+
+    setOutstandingAmount(String(totalRemainingPayable));
+  }, [emisRemaining, isOutstandingAutoFilled, monthlyEmi, numEmi, numRemaining, totalRemainingPayable]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -187,26 +192,6 @@ export const LoanModal: React.FC<LoanModalProps> = ({
           </div>
         </div>
 
-        {/* Outstanding Balance */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-            Outstanding Balance (₹) <span className="font-normal text-slate-400">optional</span>
-          </label>
-          <input
-            type="number"
-            step="any"
-            min="0"
-            value={outstandingAmount}
-            onChange={(e) => setOutstandingAmount(e.target.value)}
-            placeholder={numRemaining > 0 ? String(totalRemainingPayable) : 'e.g. 285000'}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none"
-          />
-        </div>
-
-        <p className="text-[11px] text-slate-400 dark:text-slate-500 -mt-1">
-          If you enter EMI and remaining months, the remaining amount is auto-filled for you.
-        </p>
-
         {/* EMI and EMIs Remaining */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -257,6 +242,29 @@ export const LoanModal: React.FC<LoanModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Outstanding Balance */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+            Outstanding Balance (₹) <span className="font-normal text-slate-400">optional</span>
+          </label>
+          <input
+            type="number"
+            step="any"
+            min="0"
+            value={outstandingAmount}
+            onChange={(e) => {
+              setOutstandingAmount(e.target.value);
+              setIsOutstandingAutoFilled(!e.target.value);
+            }}
+            placeholder={numRemaining > 0 ? String(totalRemainingPayable) : 'e.g. 285000'}
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none"
+          />
+        </div>
+
+        <p className="text-[11px] text-slate-400 dark:text-slate-500 -mt-1">
+          If you enter EMI and remaining months, the remaining amount is auto-filled for you.
+        </p>
 
         {/* Interest Rate — Optional */}
         <div>

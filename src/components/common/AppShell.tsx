@@ -1,21 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Navbar } from './Navbar';
 import { MobileNav } from './MobileNav';
 import { Footer } from './Footer';
 import { QuickAddModal } from '../dashboard/QuickAddModal';
 import { PwaRegister } from '../pwa/PwaRegister';
-import { AuthScreen } from '../auth/AuthScreen';
-import { useFinance } from '@/lib/context/FinanceContext';
-import { hasSupabaseConfig } from '@/lib/supabase/client';
 
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
-  const { user, authReady } = useFinance();
+  const pathname = usePathname();
 
-  if (!user && authReady) {
-    return <AuthScreen />;
+  if (pathname === '/auth') {
+    return <>{children}</>;
   }
 
   return (

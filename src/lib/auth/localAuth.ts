@@ -3,6 +3,8 @@ export type LocalAuthUser = {
   email: string;
 };
 
+type StoredLocalUser = { email: string; password: string; id: string; favoriteFruit?: string };
+
 const LOCAL_AUTH_KEY = 'wealthtrack_local_auth_users';
 const LOCAL_SESSION_KEY = 'wealthtrack_local_auth_session';
 
@@ -18,7 +20,7 @@ function getStorage(): Storage | null {
   return null;
 }
 
-function readUsers(): Record<string, { email: string; password: string; id: string }> {
+function readUsers(): Record<string, StoredLocalUser> {
   const storage = getStorage();
   if (!storage) return {};
 
@@ -30,7 +32,7 @@ function readUsers(): Record<string, { email: string; password: string; id: stri
   }
 }
 
-function writeUsers(users: Record<string, { email: string; password: string; id: string }>) {
+function writeUsers(users: Record<string, StoredLocalUser>) {
   const storage = getStorage();
   if (!storage) return;
   storage.setItem(LOCAL_AUTH_KEY, JSON.stringify(users));
@@ -62,7 +64,12 @@ export function validateSignupCredentials(
   return { ok: true, message: '' };
 }
 
-export function signUpLocal(email: string, password: string, confirmPassword: string = password): LocalAuthUser | null {
+export function signUpLocal(
+  email: string,
+  password: string,
+  confirmPassword: string = password,
+  favoriteFruit = ''
+): LocalAuthUser | null {
   const validation = validateSignupCredentials(email, password, confirmPassword);
   if (!validation.ok) return null;
 
@@ -71,7 +78,7 @@ export function signUpLocal(email: string, password: string, confirmPassword: st
   if (users[normalizedEmail]) return null;
 
   const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  users[normalizedEmail] = { email: normalizedEmail, password, id };
+  users[normalizedEmail] = { email: normalizedEmail, password, id, favoriteFruit };
   writeUsers(users);
 
   const user: LocalAuthUser = { id, email: normalizedEmail };
@@ -81,6 +88,21 @@ export function signUpLocal(email: string, password: string, confirmPassword: st
   }
 
   return user;
+}
+
+export function resetLocalPassword(email: string, favoriteFruit: string, newPassword: string): boolean {
+  if (!email.trim() || !favoriteFruit.trim() || newPassword.length < 8) return false;
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const users = readUsers();
+  const user = users[normalizedEmail];
+  if (!user?.favoriteFruit || user.favoriteFruit.trim().toLowerCase() !== favoriteFruit.trim().toLowerCase()) {
+    return false;
+  }
+
+  users[normalizedEmail] = { ...user, password: newPassword };
+  writeUsers(users);
+  return true;
 }
 
 export function signInLocal(email: string, password: string): LocalAuthUser | null {

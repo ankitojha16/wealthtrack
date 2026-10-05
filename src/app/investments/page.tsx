@@ -42,11 +42,18 @@ export default function InvestmentsPage() {
 
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+  const [newInvestmentType, setNewInvestmentType] = useState<InvestmentType>('SIP');
   const [updateValTarget, setUpdateValTarget] = useState<Investment | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<Investment | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [isRefreshingStocks, setIsRefreshingStocks] = useState(false);
+
+  const openAddInvestment = (type: InvestmentType = 'SIP') => {
+    setEditingInvestment(null);
+    setNewInvestmentType(type);
+    setIsManualModalOpen(true);
+  };
 
   const filtered = investments.filter((inv) => {
     const matchType = filterType === 'all' || inv.type === filterType;
@@ -153,10 +160,7 @@ export default function InvestmentsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => {
-              setEditingInvestment(null);
-              setIsManualModalOpen(true);
-            }}
+            onClick={() => openAddInvestment()}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-sm shadow-sky-600/30 transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -165,10 +169,7 @@ export default function InvestmentsPage() {
 
           <button
             type="button"
-            onClick={() => {
-              setEditingInvestment(null);
-              setIsManualModalOpen(true);
-            }}
+            onClick={() => openAddInvestment('Stocks')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white border border-slate-700 shadow-sm transition-all"
           >
             <LineChart className="w-4 h-4 text-sky-400" />
@@ -337,7 +338,7 @@ export default function InvestmentsPage() {
               <div className="flex justify-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsManualModalOpen(true)}
+                  onClick={() => openAddInvestment()}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
@@ -345,7 +346,7 @@ export default function InvestmentsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsManualModalOpen(true)}
+                  onClick={() => openAddInvestment('Stocks')}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white border border-slate-700 shadow-sm"
                 >
                   <LineChart className="w-4 h-4 text-sky-400" />
@@ -518,6 +519,7 @@ export default function InvestmentsPage() {
           setEditingInvestment(null);
         }}
         initialData={editingInvestment}
+        initialType={newInvestmentType}
         onSave={async (data) => {
           if (editingInvestment) {
             await editInvestment({ ...editingInvestment, ...data });

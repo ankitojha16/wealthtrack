@@ -34,3 +34,15 @@ test('local auth allows signup and sign in without Supabase configuration', asyn
   const session = getLocalSessionUser();
   assert.equal(session?.email, 'demo@example.com');
 });
+
+test('local auth resets password after matching the saved favorite fruit', async () => {
+  globalThis.localStorage = createMemoryStorage();
+
+  const { signUpLocal, signInLocal, resetLocalPassword } = await import('../src/lib/auth/localAuth.ts');
+  signUpLocal('fruit@example.com', 'secure-pass-123', 'secure-pass-123', 'Mango');
+
+  assert.equal(resetLocalPassword('fruit@example.com', 'Apple', 'new-secure-pass'), false);
+  assert.equal(resetLocalPassword('fruit@example.com', 'mango', 'new-secure-pass'), true);
+  assert.equal(signInLocal('fruit@example.com', 'secure-pass-123'), null);
+  assert.equal(signInLocal('fruit@example.com', 'new-secure-pass')?.email, 'fruit@example.com');
+});

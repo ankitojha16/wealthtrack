@@ -33,7 +33,7 @@ export const MobileNav: React.FC = () => {
   ];
 
   const moreItems = [
-    { label: 'Login / Sign up', href: '/auth', icon: Settings, desc: 'Access account & secure sync' },
+    { label: 'Login / Sign up', href: '/auth', icon: Settings, desc: 'Access your account' },
     { label: 'Investments', href: '/investments', icon: TrendingUp, desc: 'Portfolio & returns' },
     { label: 'Reports', href: '/reports', icon: FileBarChart2, desc: 'Net worth & financial health' },
     { label: 'Calculators', href: '/calculators', icon: Calculator, desc: '19 Financial calculators' },

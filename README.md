@@ -1,154 +1,78 @@
 # WealthTrack
 
 > **Track Your Money. Understand Your Wealth.**  
-> *Founded by ANKIT KUMAR*
+> Founded by ANKIT KUMAR
 
-WealthTrack is a production-ready, privacy-focused personal finance web application built with Next.js App Router, React 18, TypeScript, and Tailwind CSS. It is architected from first principles to be **100% API-free**, requiring zero live market feeds, banking scrapers, or external tracking services.
+WealthTrack is a personal finance app for tracking budgets, investments, goals, loans, assets, liabilities, and net worth. It is built with Next.js, React, TypeScript, and Tailwind CSS.
 
----
+## Features
 
-## 🌟 Core Philosophy
+- **Dashboard and reports:** Review cash flow, net worth, assets, liabilities, and financial health.
+- **Budgeting:** Record income and expenses, set category limits, and review spending.
+- **Investments:** Track manually entered balances and returns for supported investment types.
+- **Goals and loans:** Track goal contributions, loan balances, and EMI progress.
+- **Calculators and learning:** Use financial calculators and browse personal-finance articles.
+- **Export and import:** Back up financial records using the tools in Settings.
+- **Offline support:** The installable PWA uses a service worker to cache parts of the app.
 
-- **Zero API Dependency:** No stock APIs, mutual fund APIs, banking aggregators, or crypto scrapers. All investment valuations and balance sheet figures are maintained directly and timestamped by you.
-- **100% Privacy & Local Storage:** All records reside inside your browser’s IndexedDB (with graceful fallback). Your net worth, salaries, and debts are never sent to external servers.
-- **No Fake Data or Hallucinated History:** WealthTrack never generates artificial historical trends. Empty states guide the user cleanly until real ledger entries build authentic trends.
-- **Progressive Web App (PWA):** Equipped with a service worker (`/sw.js`) and manifest (`/manifest.json`) for installation on desktop and mobile with full offline functionality.
+## Data storage and authentication
 
----
+The app supports two modes:
 
-## 🚀 Key Features
+- **Supabase mode:** When a Supabase URL and anon key are configured, users can sign up and sign in, and authenticated financial records sync to Supabase.
+- **Local-only mode:** Without Supabase configuration, accounts and financial records are stored in the browser. They are not synced across devices.
 
-### 1. Financial Overview Dashboard
-- Dynamic time-aware greeting (*Good morning / afternoon / evening 👋*).
-- 4 Primary Balance Sheet Cards: **Total Assets**, **Total Liabilities**, **Net Worth**, and **Monthly Savings**.
-- Algorithmic **Financial Health Score (0-100)** with individual component scores (Savings, Debt, Emergency Fund, Goals, Investments) and transparent factors checklist (*WHAT IS AFFECTING YOUR SCORE?*).
-- Quick Actions shortcut bar to record Expenses, Incomes, Investments, Goals, or Loans in seconds.
-- Interactive SVG Net Worth trend chart and Expense distribution donut chart.
+Local-only accounts and Supabase accounts are separate. A local-only account is not migrated when Supabase is configured later.
 
-### 2. Budget & Expense Tracker (`/budget`)
-- Monthly income and expense budget manager.
-- Category spending thresholds (Food, Transport, Housing, Education, Shopping, Entertainment, Bills, Healthcare, Travel, Other + Custom Categories).
-- Category progress bars highlighting utilized limits, remaining amounts, and over-budget warnings.
-- Full ledger with search, filtering by type/category/payment method, and sorting.
-- Double-submission guard preventing accidental duplicate clicks.
+### Configure Supabase
 
-### 3. Manual Investments Portfolio (`/investments`)
-- Supports: Mutual Funds, FD, RD, PPF, EPF, NPS, Gold, Bonds, Cash, and Other Investments.
-- Cost basis tracking vs Current Value.
-- Computes absolute gain/loss and annualized return percentages.
-- Mandatory transparent labeling on every asset: *"Investment values are entered and updated by you. Last updated: [date]"*.
-- Rapid "Update Current Value" modal with today's timestamp.
+1. Create a Supabase project and apply [`supabase/migrations/20260921_create_wealthtrack_schema.sql`](supabase/migrations/20260921_create_wealthtrack_schema.sql) to its database.
+2. Set these environment variables for the app:
 
-### 4. Financial Goals (`/goals`)
-- Goal categories: Emergency Fund, Education, Laptop, Vehicle, Travel, Home, Personal Goal, Custom Goal.
-- Computes remaining target, required monthly contribution, and progress percentages.
-- Direct "Log Contribution" action.
+   ```dotenv
+   NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+   SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+   ```
 
-### 5. Loans & Debt Manager (`/loans`)
-- Explicitly answers: **"How many EMIs are left?"**
-- Tracks Personal Loans, Home Loans, Car Loans, Education Loans, and Credit Cards.
-- Shows total outstanding debt, monthly EMI obligations, total pending installments, estimated total remaining payable cash outflow, and repayment percentage.
-- "Paid EMI" one-click action to advance remaining EMIs.
+   The service-role key is required by server-side signup and password recovery routes. Keep it secret: do not prefix it with `NEXT_PUBLIC_` or commit it to source control.
+3. Configure the same variables in your hosting provider and redeploy after changing them.
 
-### 6. Master Financial Reports (`/reports`)
-- Consolidated Master Balance Sheet.
-- 8 Useful Visual Visualizations: Net Worth Trend, Assets vs Liabilities, Investment Distribution, Category Expenses, Solvency Ratio, and Goal Velocity.
-- Monthly Cash Flow Statement with Month-over-Month variance analysis (e.g. comparing August vs September).
-- Dedicated Financial Health Diagnostic Audit with informational observations.
+For local development, create `.env.local` in the project root and add the variables there. If Supabase variables are omitted, the app runs in local-only mode.
 
-### 7. Financial Calculators Hub (`/calculators`)
-19 dedicated financial calculators with live sliders, instant charts/tables, mathematical formulas, worked examples, and Schema.org `FAQPage` JSON-LD:
-1. EMI Calculator
-2. SIP Calculator
-3. Lumpsum Calculator
-4. Compound Interest Calculator
-5. Simple Interest Calculator
-6. Fixed Deposit (FD) Calculator
-7. Recurring Deposit (RD) Calculator
-8. Public Provident Fund (PPF) Calculator
-9. CAGR Calculator
-10. XIRR Calculator (Newton-Raphson numerical solver)
-11. Inflation Calculator
-12. Loan Prepayment Calculator
-13. Savings Goal Calculator
-14. Emergency Fund Calculator
-15. Net Worth Calculator
-16. 50/30/20 Budget Calculator
-17. Percentage Calculator
-18. Discount Calculator
-19. GST Calculator
+## Getting started
 
-### 8. Learn Knowledge Center (`/learn`)
-14 high-value, SEO-optimized educational articles with structured headings, practical takeaways, FAQs, and Schema.org `Article` structured data:
-- What is SIP?
-- What is CAGR?
-- What is XIRR?
-- What is Compound Interest?
-- What is Inflation?
-- What is an Emergency Fund?
-- What is Net Worth?
-- What is EMI?
-- Principal vs Interest
-- FD vs RD
-- SIP vs Lumpsum
-- How to Calculate Savings Rate
-- How to Calculate Net Worth
-- How to Calculate EMI
+Requirements: Node.js 20 or later and npm.
 
-### 9. Privacy, Data & Settings (`/settings`)
-- Multiple currency support: INR (`₹`), USD (`$`), EUR (`€`), GBP (`£`).
-- Indian numbering system (`₹1,00,000`, Lakhs, Crores) and International numbering system.
-- Light / Dark / System theme switch.
-- Export Data: Full JSON database snapshot and CSV spreadsheets for transactions, investments, and loans.
-- Import Data: Backup restoration with schema validation.
-- Permanent Wipe: Danger zone with required `DELETE` keyword confirmation.
-- Direct Feedback: Structured feedback modal routed to configured `SUPPORT_EMAIL`.
-
----
-
-## 🛠️ Tech Stack
-
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS (Dark/Light mode via CSS variables & class strategy)
-- **Icons:** Lucide React
-- **Storage:** Client-side IndexedDB with transactional safety and LocalStorage fallback
-- **PWA:** Web App Manifest + Service Worker with offline caching
-- **Testing:** Node.js native test runner (`node:test`)
-
----
-
-## 💻 Getting Started
-
-### 1. Install Dependencies
 ```bash
 npm install
-```
-
-### 2. Run Local Development Server
-```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 3. Run Math & Financial Unit Tests
+Open [http://localhost:3000](http://localhost:3000).
+
+## Tests and production build
+
 ```bash
 npm test
-```
-
-### 4. Build Production Bundle
-```bash
 npm run build
-```
-
-### 5. Start Production Server
-```bash
 npm start
 ```
 
----
+`npm start` serves the production build created by `npm run build`.
 
-## 📄 License & Attribution
+## Deployment
+
+The project is configured for Vercel. Connect the GitHub repository to the Vercel project, configure the production environment variables above, and deploy the `main` branch. Keep secrets in Vercel’s Environment Variables settings, not in Git.
+
+## Tech stack
+
+- Next.js App Router and React
+- TypeScript and Tailwind CSS
+- Supabase Auth and Postgres for synced accounts; browser storage for local-only mode
+- Node.js native test runner (`node:test`)
+
+## License
 
 © 2026 WealthTrack. All rights reserved.  
-**Founded by ANKIT KUMAR**
+Founded by ANKIT KUMAR

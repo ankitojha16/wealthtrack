@@ -19,11 +19,15 @@ import {
   Shield,
   FileText,
   Info,
+  LogIn,
+  LogOut,
 } from 'lucide-react';
+import { useFinance } from '@/lib/context/FinanceContext';
 
 export const MobileNav: React.FC = () => {
   const pathname = usePathname();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const { user, signOutUser } = useFinance();
 
   const mainTabs = [
     { label: 'Home', href: '/', icon: Home },
@@ -33,7 +37,9 @@ export const MobileNav: React.FC = () => {
   ];
 
   const moreItems = [
-    { label: 'Login / Sign up', href: '/auth', icon: Settings, desc: 'Access your account' },
+    user
+      ? { label: 'Sign Out', action: async () => { await signOutUser(); setIsMoreOpen(false); }, icon: LogOut, desc: user.email || 'Logged in' }
+      : { label: 'Login / Sign up', href: '/auth', icon: LogIn, desc: 'Access your account' },
     { label: 'Investments', href: '/investments', icon: TrendingUp, desc: 'Portfolio & returns' },
     { label: 'Reports', href: '/reports', icon: FileBarChart2, desc: 'Net worth & financial health' },
     { label: 'Calculators', href: '/calculators', icon: Calculator, desc: '19 Financial calculators' },
@@ -114,12 +120,31 @@ export const MobileNav: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-6">
               {moreItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const isActive = 'href' in item && item.href ? (pathname === item.href || pathname.startsWith(`${item.href}/`)) : false;
+
+                if ('action' in item && item.action) {
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={item.action}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-rose-100 dark:border-rose-950/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-left transition-all w-full"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-rose-50 dark:bg-rose-950/60 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold">{item.label}</span>
+                        <span className="text-[11px] text-slate-400 truncate max-w-[180px]">{item.desc}</span>
+                      </div>
+                    </button>
+                  );
+                }
 
                 return (
                   <Link
-                    key={item.href}
-                    href={item.href}
+                    key={item.label}
+                    href={item.href!}
                     onClick={() => setIsMoreOpen(false)}
                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                       isActive

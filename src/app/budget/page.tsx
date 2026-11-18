@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useFinance } from '@/lib/context/FinanceContext';
-import { formatCurrency, formatPercent, formatDate } from '@/lib/formatters';
+import { formatCurrency, formatPercent, formatDate, getCurrentMonthYearString, formatMonthYear } from '@/lib/formatters';
 import { DEFAULT_EXPENSE_CATEGORIES } from '@/lib/data/categories';
 import { TransactionModal } from '@/components/budget/TransactionModal';
 import { DonutChart } from '@/components/charts/DonutChart';
@@ -19,8 +19,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   SlidersHorizontal,
+  Calendar,
+  Download,
 } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
+import { exportTransactionsCSV } from '@/lib/export-import';
 
 export default function BudgetPage() {
   const {
@@ -36,9 +39,12 @@ export default function BudgetPage() {
     removeTransaction,
   } = useFinance();
 
+  const currentMonthYear = getCurrentMonthYearString();
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthYear);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
+  const [filterPeriod, setFilterPeriod] = useState<'month' | 'all'>('month');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
 
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
@@ -53,13 +59,29 @@ export default function BudgetPage() {
   });
   const [newLimitInput, setNewLimitInput] = useState('');
 
-  // Calculate spending per category
+  // Available unique months from transactions & current
+  const availableMonths = React.useMemo(() => {
+    const set = new Set<string>();
+    set.add(currentMonthYear);
+    transactions.forEach((t) => {
+      if (t.date && t.date.length >= 7) {
+        set.add(t.date.substring(0, 7));
+      }
+    });
+    return Array.from(set).sort().reverse();
+  }, [transactions, currentMonthYear]);
+
+  // Calculate spending per category for selected month
   const expenseByCategory: Record<string, number> = {};
   transactions
-    .filter((t) => t.type === 'expense')
+    .filter((t) => t.type === 'expense' && t.date.startsWith(selectedMonth))
     .forEach((t) => {
       expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
     });
+
+  const selectedMonthIncome = transactions
+    .filter((t) => t.type === 'income' && t.date.startsWith(selectedMonth))
+    .reduce((sum, t) => sum + (t.amount || 0), 0);
 
   // Calculate budget totals
   const totalBudgetLimit = budgets.reduce((sum, b) => sum + (b.monthlyLimit || 0), 0);
@@ -70,6 +92,7 @@ export default function BudgetPage() {
   // Filtered transactions
   const filteredTransactions = transactions
     .filter((t) => {
+      const matchPeriod = filterPeriod === 'all' || t.date.startsWith(selectedMonth);
       const matchType = filterType === 'all' || t.type === filterType;
       const matchCategory = filterCategory === 'all' || t.category === filterCategory;
       const query = search.toLowerCase();
@@ -78,7 +101,7 @@ export default function BudgetPage() {
         t.category.toLowerCase().includes(query) ||
         (t.description && t.description.toLowerCase().includes(query)) ||
         ((t.paymentMethod || '').toLowerCase().includes(query));
-      return matchType && matchCategory && matchSearch;
+      return matchPeriod && matchType && matchCategory && matchSearch;
     })
     .sort((a, b) => {
       if (sortBy === 'date_desc') return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -137,7 +160,23 @@ export default function BudgetPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Month Selector */}
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
+            <Calendar className="w-3.5 h-3.5 text-sky-500" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+            >
+              {availableMonths.map((m) => (
+                <option key={m} value={m} className="dark:bg-slate-900">
+                  {formatMonthYear(m)} {m === currentMonthYear ? '(Current)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="button"
             onClick={() => {
@@ -169,9 +208,11 @@ export default function BudgetPage() {
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Monthly Income</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+              {selectedMonth === currentMonthYear ? 'Monthly Income' : `${formatMonthYear(selectedMonth)} Income`}
+            </span>
             <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(monthlyIncome, { symbol: settings.currencySymbol })}
+              {formatCurrency(selectedMonthIncome, { symbol: settings.currencySymbol })}
             </span>
           </div>
 
@@ -321,6 +362,24 @@ export default function BudgetPage() {
 
           {/* Search, Filter, Sort Controls */}
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            {/* Period selector */}
+            <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setFilterPeriod('month')}
+                className={`px-2.5 py-1 rounded-lg transition-colors ${filterPeriod === 'month' ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-slate-500'}`}
+              >
+                {formatMonthYear(selectedMonth)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterPeriod('all')}
+                className={`px-2.5 py-1 rounded-lg transition-colors ${filterPeriod === 'all' ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-slate-500'}`}
+              >
+                All Time
+              </button>
+            </div>
+
             {/* Type selector */}
             <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
               <button
@@ -371,6 +430,17 @@ export default function BudgetPage() {
               <option value="amount_desc">Highest Amount</option>
               <option value="amount_asc">Lowest Amount</option>
             </select>
+
+            {/* Export CSV button */}
+            <button
+              type="button"
+              onClick={() => exportTransactionsCSV(filteredTransactions)}
+              title="Download CSV of current filtered transactions"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>CSV</span>
+            </button>
           </div>
         </div>
 

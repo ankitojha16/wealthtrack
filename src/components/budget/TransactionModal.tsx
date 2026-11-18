@@ -126,7 +126,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         </div>
       }
     >
-      <form id="transaction-form" onSubmit={(e) => e.preventDefault()} className="space-y-4">
+      <form id="transaction-form" onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }} className="space-y-4">
         {error && (
           <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-600 dark:text-rose-400">
             {error}

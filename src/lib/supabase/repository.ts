@@ -1,5 +1,6 @@
 import { supabase } from './client';
 import { getUpsertConflictTarget } from './upsertConfig';
+import { prepareRecordPayload } from './payloadBuilder';
 
 export type UserSession = { id: string; email?: string | null };
 
@@ -95,22 +96,26 @@ export async function listRecords<T>(table: string, userId: string): Promise<T[]
     return [];
   }
 
-  return (data ?? []) as T[];
+  const rows = (data ?? []) as any[];
+  if (table === 'snapshots') {
+    return rows.map((r) => ({
+      ...r,
+      netWorth: r.netWorth ?? r.net_worth ?? 0,
+      net_worth: r.net_worth ?? r.netWorth ?? 0,
+    })) as T[];
+  }
+
+  return rows as T[];
 }
 
-export async function upsertRecord<T extends { id?: string; user_id?: string | null; key?: string }>(table: string, row: T, userId: string): Promise<T> {
-  if (!supabase) return row;
+export async function upsertRecord<T extends { id?: string; user_id?: string | null; key?: string; category?: string; monthYear?: string }>(
+  table: string,
+  row: T,
+  userId: string
+): Promise<T> {
+  const payload: any = prepareRecordPayload(table, row, userId);
 
-  const payload = { ...row, user_id: userId } as T & { user_id: string; id?: string; key?: string };
-
-  if (!payload.id && table !== 'app_settings') {
-    const identity = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    payload.id = identity;
-  }
-
-  if (table === 'app_settings' && !payload.id && payload.key) {
-    payload.id = `${payload.key}:${userId}`;
-  }
+  if (!supabase) return payload as T;
 
   const conflictTarget = getUpsertConflictTarget(table);
 
@@ -126,7 +131,12 @@ export async function upsertRecord<T extends { id?: string; user_id?: string | n
     throw new Error(error.message);
   }
 
-  return (data ?? payload) as T;
+  const result: any = data ?? payload;
+  if (table === 'snapshots') {
+    result.netWorth = result.netWorth ?? result.net_worth ?? 0;
+  }
+
+  return result as T;
 }
 
 export async function deleteRecord(table: string, id: string, userId: string): Promise<void> {

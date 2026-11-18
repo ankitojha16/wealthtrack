@@ -13,7 +13,7 @@ import { InvestmentModal } from '@/components/investments/InvestmentModal';
 import { GoalModal } from '@/components/goals/GoalModal';
 import { LoanModal } from '@/components/loans/LoanModal';
 import { Transaction } from '@/types';
-import { formatCurrency, formatPercent } from '@/lib/formatters';
+import { formatCurrency, formatPercent, formatMonthYear, getCurrentMonthYearString } from '@/lib/formatters';
 import {
   TrendingDown,
   TrendingUp,
@@ -23,6 +23,9 @@ import {
   ArrowRight,
   ShieldCheck,
   PiggyBank,
+  AlertTriangle,
+  Bell,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -30,6 +33,7 @@ export default function DashboardPage() {
   const {
     loading,
     transactions,
+    budgets,
     investments,
     goals,
     loans,
@@ -40,6 +44,9 @@ export default function DashboardPage() {
     totalInvestmentValue,
     totalLoansOutstanding,
     totalMonthlyEmi,
+    monthlyIncome,
+    monthlyExpenses,
+    monthlySavings,
     settings,
     addTransaction,
     editTransaction,
@@ -93,6 +100,51 @@ export default function DashboardPage() {
     label: s.monthYear,
     value: s.netWorth,
   }));
+
+  // Smart data-driven insights & reminders
+  const currentMonthYear = getCurrentMonthYearString();
+  const currentMonthSnapshotRecorded = snapshots.some((s) => s.monthYear === currentMonthYear);
+  const totalBudgetLimit = budgets.reduce((sum, b) => sum + (b.monthlyLimit || 0), 0);
+  const totalCurrentExpenses = transactions
+    .filter((t) => t.type === 'expense' && t.date.startsWith(currentMonthYear))
+    .reduce((sum, t) => sum + t.amount, 0);
+  const budgetUtilization = totalBudgetLimit > 0 ? (totalCurrentExpenses / totalBudgetLimit) * 100 : 0;
+  const savingsRate = monthlyIncome > 0 ? Math.max(0, (monthlySavings / monthlyIncome) * 100) : 0;
+
+  const reminders: { id: string; title: string; desc: string; icon: any; href?: string; action?: () => void; type: 'info' | 'warning' }[] = [];
+
+  if (totalMonthlyEmi > 0) {
+    reminders.push({
+      id: 'emi',
+      title: 'Monthly EMI Obligations',
+      desc: `${loans.length} active loan${loans.length > 1 ? 's' : ''} with ${formatCurrency(totalMonthlyEmi, { symbol: settings.currencySymbol })} due this month.`,
+      icon: CreditCard,
+      href: '/loans',
+      type: 'info',
+    });
+  }
+
+  if (totalBudgetLimit > 0 && budgetUtilization >= 80) {
+    reminders.push({
+      id: 'budget',
+      title: budgetUtilization > 100 ? 'Budget Overspent' : 'Budget Utilization Warning',
+      desc: `${budgetUtilization.toFixed(0)}% utilized (${formatCurrency(totalCurrentExpenses, { symbol: settings.currencySymbol })} of ${formatCurrency(totalBudgetLimit, { symbol: settings.currencySymbol })}).`,
+      icon: AlertTriangle,
+      href: '/budget',
+      type: budgetUtilization > 100 ? 'warning' : 'info',
+    });
+  }
+
+  if (!currentMonthSnapshotRecorded && (transactions.length > 0 || investments.length > 0)) {
+    reminders.push({
+      id: 'snapshot',
+      title: 'Monthly Snapshot Reminder',
+      desc: `Save your ${formatMonthYear(currentMonthYear)} net worth snapshot to keep trend graphs current.`,
+      icon: ShieldCheck,
+      action: () => recordCurrentSnapshot(),
+      type: 'info',
+    });
+  }
 
   if (loading) {
     return (
@@ -164,6 +216,61 @@ export default function DashboardPage() {
 
       {/* 4 Financial Overview Cards */}
       <OverviewCards />
+
+      {/* Smart Reminders & Actionable Banner */}
+      {reminders.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {reminders.map((r) => {
+            const Icon = r.icon;
+            const content = (
+              <div
+                className={`p-3.5 rounded-2xl border flex items-start gap-3 transition-all ${
+                  r.type === 'warning'
+                    ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-900 dark:text-rose-200'
+                    : 'bg-sky-50/60 dark:bg-sky-950/30 border-sky-200 dark:border-sky-900/50 text-sky-900 dark:text-sky-200'
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center ${
+                    r.type === 'warning'
+                      ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400'
+                      : 'bg-sky-100 dark:bg-sky-900/60 text-sky-600 dark:text-sky-400'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold truncate">{r.title}</span>
+                    <span className="text-[9px] uppercase px-1.5 py-0.5 rounded font-black tracking-wider bg-white/70 dark:bg-slate-900/70 text-slate-600 dark:text-slate-300">
+                      Alert
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 leading-snug">{r.desc}</p>
+                </div>
+              </div>
+            );
+
+            if (r.href) {
+              return (
+                <Link key={r.id} href={r.href} className="hover:opacity-90 transition-opacity">
+                  {content}
+                </Link>
+              );
+            }
+
+            if (r.action) {
+              return (
+                <button key={r.id} type="button" onClick={r.action} className="text-left w-full hover:opacity-90 transition-opacity">
+                  {content}
+                </button>
+              );
+            }
+
+            return <div key={r.id}>{content}</div>;
+          })}
+        </div>
+      )}
 
       {/* Financial Health Section */}
       <FinancialHealthCard />

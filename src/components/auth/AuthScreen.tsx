@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useFinance } from '@/lib/context/FinanceContext';
 import { hasSupabaseConfig } from '@/lib/supabase/client';
 import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, KeyRound, CheckCircle2 } from 'lucide-react';
@@ -11,8 +11,11 @@ import { RECOVERY_FRUITS, isRecoveryFruit } from '@/lib/auth/recovery';
 
 export function AuthScreen() {
   const router = useRouter();
-  const { signInWithEmail, signUpWithEmail, resetPasswordWithFruit, settings } = useFinance();
+  const searchParams = useSearchParams();
+  const redirectDestination = searchParams?.get('redirect') || '/';
+  const { signInWithEmail, signUpWithEmail, resetPasswordForEmail, resetPasswordWithFruit, settings } = useFinance();
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [resetMethod, setResetMethod] = useState<'email' | 'fruit'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -78,10 +81,6 @@ export function AuthScreen() {
         setError(validation.message);
         return;
       }
-      if (!isRecoveryFruit(favoriteFruit)) {
-        setError('Choose a favorite fruit for password recovery.');
-        return;
-      }
     }
 
     setIsSubmitting(true);
@@ -97,7 +96,7 @@ export function AuthScreen() {
       }
 
       setSuccess(mode === 'login' ? 'Signed in successfully.' : 'Account created. You are signed in.');
-      router.push('/');
+      router.push(redirectDestination);
     } catch (err: any) {
       const userMessage = err?.message || 'Authentication failed. Please try again.';
       setError(userMessage);
@@ -120,22 +119,32 @@ export function AuthScreen() {
       return;
     }
 
-    if (!isRecoveryFruit(favoriteFruit)) {
-      setError('Choose the favorite fruit saved with your account.');
-      return;
-    }
-
-    const validation = validateSignupCredentials(email.trim(), newPassword, confirmNewPassword);
-    if (!validation.ok) {
-      setError(validation.message);
+    if (!email.trim() || !email.includes('@')) {
+      setError('Please enter a valid email address.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await resetPasswordWithFruit(email.trim(), favoriteFruit, newPassword);
-      setSuccess('Password updated. You are signed in.');
-      router.push('/');
+      if (resetMethod === 'email') {
+        await resetPasswordForEmail(email.trim());
+        setSuccess('Password reset link sent! Check your inbox to set a new password.');
+      } else {
+        if (!isRecoveryFruit(favoriteFruit)) {
+          setError('Choose the favorite fruit saved with your account.');
+          setIsSubmitting(false);
+          return;
+        }
+        const validation = validateSignupCredentials(email.trim(), newPassword, confirmNewPassword);
+        if (!validation.ok) {
+          setError(validation.message);
+          setIsSubmitting(false);
+          return;
+        }
+        await resetPasswordWithFruit(email.trim(), favoriteFruit, newPassword);
+        setSuccess('Password updated. You are signed in.');
+        router.push('/');
+      }
     } catch (err: any) {
       const userMessage = err?.message || 'Unable to reset password.';
       setError(userMessage);
@@ -242,16 +251,17 @@ export function AuthScreen() {
               </div>
             </div>
 
-            {(mode === 'signup' || mode === 'forgot') && (
+            {mode === 'signup' && (
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">Favorite fruit</label>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Favorite fruit <span className="text-slate-400 font-normal">(optional security question)</span>
+                </label>
                 <select
                   value={favoriteFruit}
                   onChange={(e) => setFavoriteFruit(e.target.value)}
-                  required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="" disabled>Select a fruit</option>
+                  <option value="">None (Standard email recovery)</option>
                   {RECOVERY_FRUITS.map((fruit) => <option key={fruit} value={fruit}>{fruit}</option>)}
                 </select>
               </div>
@@ -294,8 +304,20 @@ export function AuthScreen() {
               </div>
             )}
 
-            {mode === 'forgot' && (
+            {mode === 'forgot' && resetMethod === 'fruit' && (
               <>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">Favorite fruit</label>
+                  <select
+                    value={favoriteFruit}
+                    onChange={(e) => setFavoriteFruit(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="" disabled>Select your registered fruit</option>
+                    {RECOVERY_FRUITS.map((fruit) => <option key={fruit} value={fruit}>{fruit}</option>)}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">New password</label>
                   <input
@@ -321,6 +343,24 @@ export function AuthScreen() {
               </>
             )}
 
+            {mode === 'forgot' && (
+              <div className="flex items-center justify-between text-xs pt-1">
+                <button
+                  type="button"
+                  onClick={() => setResetMethod(resetMethod === 'email' ? 'fruit' : 'email')}
+                  className="text-sky-600 dark:text-sky-400 hover:underline font-semibold"
+                >
+                  {resetMethod === 'email' ? 'Or recover using security question' : 'Or send password reset link to email'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
+                  className="text-slate-500 hover:underline"
+                >
+                  Back to login
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center justify-between text-[11px]">
               {mode === 'login' ? (
@@ -345,11 +385,12 @@ export function AuthScreen() {
               className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition disabled:opacity-60 ${accentClasses[settings.accentColor || 'sky']}`}
             >
               {isSubmitting
-                ? (mode === 'login' ? 'Signing in...' : mode === 'signup' ? 'Creating account...' : 'Resetting password...')
+                ? (mode === 'login' ? 'Signing in...' : mode === 'signup' ? 'Creating account...' : resetMethod === 'email' ? 'Sending reset link...' : 'Resetting password...')
                 : isAuthCoolingDown
                   ? 'Try again soon'
                   : mode === 'login' ? 'Login to WealthTrack'
-                    : mode === 'signup' ? 'Create account' : 'Reset password'}
+                    : mode === 'signup' ? 'Create account'
+                      : resetMethod === 'email' ? 'Send Password Reset Link' : 'Reset password'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

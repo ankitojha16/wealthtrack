@@ -19,30 +19,29 @@ function createMemoryStorage() {
   };
 }
 
-test('local auth allows signup and sign in without Supabase configuration', async () => {
+test('local mode allows guest session without storing passwords', async () => {
   globalThis.localStorage = createMemoryStorage();
 
   const { signUpLocal, signInLocal, getLocalSessionUser } = await import('../src/lib/auth/localAuth.ts');
 
   const created = signUpLocal('demo@example.com', 'secure-pass-123');
-  assert.equal(created.email, 'demo@example.com');
-  assert.ok(created.id);
+  assert.equal(created?.email, 'demo@example.com');
+  assert.ok(created?.id);
+  assert.equal(created?.isGuest, true);
 
   const signedIn = signInLocal('demo@example.com', 'secure-pass-123');
-  assert.equal(signedIn.email, 'demo@example.com');
+  assert.equal(signedIn?.email, 'demo@example.com');
 
   const session = getLocalSessionUser();
   assert.equal(session?.email, 'demo@example.com');
 });
 
-test('local auth resets password after matching the saved favorite fruit', async () => {
+test('local password reset validates minimum length without local credential leaks', async () => {
   globalThis.localStorage = createMemoryStorage();
 
-  const { signUpLocal, signInLocal, resetLocalPassword } = await import('../src/lib/auth/localAuth.ts');
-  signUpLocal('fruit@example.com', 'secure-pass-123', 'secure-pass-123', 'Mango');
+  const { resetLocalPassword, isCredentialStorageSecure } = await import('../src/lib/auth/localAuth.ts');
 
-  assert.equal(resetLocalPassword('fruit@example.com', 'Apple', 'new-secure-pass'), false);
-  assert.equal(resetLocalPassword('fruit@example.com', 'mango', 'new-secure-pass'), true);
-  assert.equal(signInLocal('fruit@example.com', 'secure-pass-123'), null);
-  assert.equal(signInLocal('fruit@example.com', 'new-secure-pass')?.email, 'fruit@example.com');
+  assert.equal(resetLocalPassword('fruit@example.com', 'Mango', 'short'), false);
+  assert.equal(resetLocalPassword('fruit@example.com', 'Mango', 'new-secure-pass'), true);
+  assert.equal(isCredentialStorageSecure(), true);
 });

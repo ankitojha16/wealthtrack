@@ -24,6 +24,8 @@ import {
   upsertRecord,
   deleteRecord,
   signInWithPassword,
+  signUpWithEmail as repoSignUpWithEmail,
+  resetPasswordForEmail as repoResetPasswordForEmail,
   signOut,
 } from '@/lib/supabase/repository';
 
@@ -92,7 +94,8 @@ interface FinanceContextType {
   refreshData: () => Promise<void>;
   recordCurrentSnapshot: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<AuthUser | null>;
-  signUpWithEmail: (email: string, password: string, favoriteFruit: string) => Promise<AuthUser | null>;
+  signUpWithEmail: (email: string, password: string, favoriteFruit?: string) => Promise<AuthUser | null>;
+  resetPasswordForEmail: (email: string) => Promise<void>;
   resetPasswordWithFruit: (email: string, favoriteFruit: string, newPassword: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
@@ -112,61 +115,82 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<UserSettings>(db.DEFAULT_SETTINGS);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const refreshingPromiseRef = React.useRef<Promise<void> | null>(null);
 
   const refreshData = useCallback(async () => {
-    try {
-      const localSessionUser = !hasSupabaseConfig() ? getLocalSessionUser() : null;
-      const activeUser = hasSupabaseConfig() ? await getActiveUser() : localSessionUser;
-      const userId = hasSupabaseConfig() ? activeUser?.id ?? null : null;
+    if (refreshingPromiseRef.current) {
+      return refreshingPromiseRef.current;
+    }
 
-      if (hasSupabaseConfig() && !userId && supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const restoredUser = session?.user ? { id: session.user.id, email: session.user.email ?? null } : null;
-        if (restoredUser) {
-          setUser(restoredUser);
+    const task = (async () => {
+      try {
+        let activeUser: AuthUser | null = null;
+
+        if (hasSupabaseConfig() && supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            activeUser = { id: session.user.id, email: session.user.email ?? null };
+          } else {
+            const fetched = await getActiveUser();
+            activeUser = fetched ? { id: fetched.id, email: fetched.email ?? null } : null;
+          }
+        } else {
+          const local = getLocalSessionUser();
+          activeUser = local ? { id: local.id, email: local.email ?? null } : null;
         }
+
+        const userId = activeUser?.id ?? null;
+
+        const [
+          loadedTx,
+          loadedBudgets,
+          loadedInv,
+          loadedGoals,
+          loadedLoans,
+          loadedAssets,
+          loadedLiabilities,
+          loadedSnapshots,
+          loadedSettings,
+        ] = await Promise.all([
+          userId ? listRecords<Transaction>('transactions', userId) : db.getTransactions(),
+          userId ? listRecords<CategoryBudget>('budgets', userId) : db.getBudgets(),
+          userId ? listRecords<Investment>('investments', userId) : db.getInvestments(),
+          userId ? listRecords<Goal>('goals', userId) : db.getGoals(),
+          userId ? listRecords<Loan>('loans', userId) : db.getLoans(),
+          userId ? listRecords<Asset>('assets', userId) : db.getAssets(),
+          userId ? listRecords<Liability>('liabilities', userId) : db.getLiabilities(),
+          userId ? listRecords<MonthlySnapshot>('snapshots', userId) : db.getSnapshots(),
+          userId
+            ? listRecords<{ key: string; value: UserSettings }>('app_settings', userId).then((rows) => {
+                const row = rows.find((s) => s.key === 'app_settings');
+                return row ? row.value : db.DEFAULT_SETTINGS;
+              })
+            : db.getSettings(),
+        ]);
+
+        setUser(activeUser);
+        setTransactions(loadedTx || []);
+        setBudgets(loadedBudgets || []);
+        setInvestments(loadedInv || []);
+        setGoals(loadedGoals || []);
+        setLoans(loadedLoans || []);
+        setAssets(loadedAssets || []);
+        setLiabilities(loadedLiabilities || []);
+        setSnapshots(loadedSnapshots || []);
+        setSettings(loadedSettings || db.DEFAULT_SETTINGS);
+      } catch (err) {
+        console.error('Error loading WealthTrack data:', err);
+      } finally {
+        setLoading(false);
+        setAuthReady(true);
       }
+    })();
 
-      const [
-        loadedTx,
-        loadedBudgets,
-        loadedInv,
-        loadedGoals,
-        loadedLoans,
-        loadedAssets,
-        loadedLiabilities,
-        loadedSnapshots,
-        loadedSettings,
-      ] = await Promise.all([
-        userId ? listRecords<Transaction>('transactions', userId) : db.getTransactions(),
-        userId ? listRecords<CategoryBudget>('budgets', userId) : db.getBudgets(),
-        userId ? listRecords<Investment>('investments', userId) : db.getInvestments(),
-        userId ? listRecords<Goal>('goals', userId) : db.getGoals(),
-        userId ? listRecords<Loan>('loans', userId) : db.getLoans(),
-        userId ? listRecords<Asset>('assets', userId) : db.getAssets(),
-        userId ? listRecords<Liability>('liabilities', userId) : db.getLiabilities(),
-        userId ? listRecords<MonthlySnapshot>('snapshots', userId) : db.getSnapshots(),
-        userId ? listRecords<{ key: string; value: UserSettings }>('app_settings', userId).then((rows) => {
-          const row = rows.find((s) => s.key === 'app_settings');
-          return row ? row.value : db.DEFAULT_SETTINGS;
-        }) : db.getSettings(),
-      ]);
-
-      setUser(activeUser ? { id: activeUser.id, email: activeUser.email ?? null } : null);
-      setTransactions(loadedTx || []);
-      setBudgets(loadedBudgets || []);
-      setInvestments(loadedInv || []);
-      setGoals(loadedGoals || []);
-      setLoans(loadedLoans || []);
-      setAssets(loadedAssets || []);
-      setLiabilities(loadedLiabilities || []);
-      setSnapshots(loadedSnapshots || []);
-      setSettings(loadedSettings || db.DEFAULT_SETTINGS);
-    } catch (err) {
-      console.error('Error loading WealthTrack data:', err);
+    refreshingPromiseRef.current = task;
+    try {
+      await task;
     } finally {
-      setLoading(false);
-      setAuthReady(true);
+      refreshingPromiseRef.current = null;
     }
   }, []);
 
@@ -178,7 +202,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session) => {
-      setUser(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null);
+      const newUser = session?.user ? { id: session.user.id, email: session.user.email ?? null } : null;
+      setUser(newUser);
       await refreshData();
     });
 
@@ -264,7 +289,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const netWorth = totalAssets - totalLiabilities;
 
   // Monthly Savings
-  const monthlySavings = monthlyIncome - monthlyExpenses - totalMonthlyEmi;
+  const monthlySavings = monthlyIncome - monthlyExpenses;
 
   // Liquid assets for emergency fund: Bank/Cash assets + Liquid investments (Cash, FD, RD)
   const liquidAssets =
@@ -290,7 +315,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   // Snapshot recording
   const recordCurrentSnapshot = useCallback(async () => {
     const snapshot: MonthlySnapshot = {
-      id: `snap_${currentMonthYear}`,
+      id: user?.id ? `snap_${user.id}_${currentMonthYear}` : `snap_${currentMonthYear}`,
       monthYear: currentMonthYear,
       netWorth,
       totalAssets,
@@ -368,7 +393,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const saveCategoryBudget = async (category: string, monthlyLimit: number) => {
     const budget: CategoryBudget = {
-      id: `b_${category}`,
+      id: user?.id ? `b_${user.id}_${category}` : `b_${category}`,
       category,
       monthlyLimit,
       spent: 0,
@@ -693,7 +718,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     return normalized;
   };
 
-  const signUpWithEmail = async (email: string, password: string, favoriteFruit: string): Promise<AuthUser | null> => {
+  const signUpWithEmail = async (email: string, password: string, favoriteFruit?: string): Promise<AuthUser | null> => {
     if (!hasSupabaseConfig()) {
       const localUser = signUpLocal(email, password, password, favoriteFruit);
       if (!localUser) return null;
@@ -703,20 +728,38 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       return normalized;
     }
 
-    const response = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, favoriteFruit }),
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Unable to create the account.');
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, favoriteFruit }),
+      });
+      if (response.ok) {
+        const userRecord = await signInWithPassword(email, password);
+        if (userRecord) {
+          const normalized: AuthUser = { id: userRecord.id, email: userRecord.email ?? null };
+          setUser(normalized);
+          await refreshData();
+          return normalized;
+        }
+      }
+    } catch {
+      // Fallback to client-side Supabase auth signup
+    }
 
-    const userRecord = await signInWithPassword(email, password);
+    const userRecord = await repoSignUpWithEmail(email, password);
     if (!userRecord) return null;
     const normalized: AuthUser = { id: userRecord.id, email: userRecord.email ?? null };
     setUser(normalized);
     await refreshData();
     return normalized;
+  };
+
+  const resetPasswordForEmail = async (email: string): Promise<void> => {
+    if (!hasSupabaseConfig()) {
+      throw new Error('Supabase Auth is not configured for email recovery.');
+    }
+    await repoResetPasswordForEmail(email);
   };
 
   const resetPasswordWithFruit = async (email: string, favoriteFruit: string, newPassword: string) => {
@@ -748,12 +791,28 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (!hasSupabaseConfig()) {
       signOutLocal();
       setUser(null);
+      setTransactions([]);
+      setBudgets([]);
+      setInvestments([]);
+      setGoals([]);
+      setLoans([]);
+      setAssets([]);
+      setLiabilities([]);
+      setSnapshots([]);
       await refreshData();
       return;
     }
 
     await signOut();
     setUser(null);
+    setTransactions([]);
+    setBudgets([]);
+    setInvestments([]);
+    setGoals([]);
+    setLoans([]);
+    setAssets([]);
+    setLiabilities([]);
+    setSnapshots([]);
     await refreshData();
   };
 
@@ -812,6 +871,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         recordCurrentSnapshot,
         signInWithEmail,
         signUpWithEmail,
+        resetPasswordForEmail,
         resetPasswordWithFruit,
         signOutUser,
       }}

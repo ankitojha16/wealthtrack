@@ -97,7 +97,7 @@ export const OverviewCards: React.FC = () => {
           {formatCurrency(monthlySavings, { symbol: sym, compact: true })}
         </div>
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
-          <span>Income - Expense - EMI</span>
+          <span>Income - Expense</span>
           <span className="flex items-center gap-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
             {monthlySavings >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3 text-rose-500" />}
             {formatCurrency(monthlySavings, { symbol: sym })}

@@ -1,41 +1,38 @@
 export type LocalAuthUser = {
   id: string;
   email: string;
+  isGuest?: boolean;
 };
 
-type StoredLocalUser = { email: string; password: string; id: string; favoriteFruit?: string };
-
-const LOCAL_AUTH_KEY = 'wealthtrack_local_auth_users';
+const LOCAL_AUTH_LEGACY_KEY = 'wealthtrack_local_auth_users';
 const LOCAL_SESSION_KEY = 'wealthtrack_local_auth_session';
 
 function getStorage(): Storage | null {
   if (typeof window !== 'undefined' && window.localStorage) {
+    purgeInsecureStorage(window.localStorage);
     return window.localStorage;
   }
 
   if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis && globalThis.localStorage) {
+    purgeInsecureStorage(globalThis.localStorage);
     return globalThis.localStorage;
   }
 
   return null;
 }
 
-function readUsers(): Record<string, StoredLocalUser> {
-  const storage = getStorage();
-  if (!storage) return {};
-
+/**
+ * Automatically purge any legacy plaintext or hashed password records from localStorage
+ * to ensure user credentials are never retained on the client filesystem.
+ */
+function purgeInsecureStorage(storage: Storage): void {
   try {
-    const raw = storage.getItem(LOCAL_AUTH_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (storage.getItem(LOCAL_AUTH_LEGACY_KEY)) {
+      storage.removeItem(LOCAL_AUTH_LEGACY_KEY);
+    }
   } catch {
-    return {};
+    // Ignore storage access errors in private browsing modes
   }
-}
-
-function writeUsers(users: Record<string, StoredLocalUser>) {
-  const storage = getStorage();
-  if (!storage) return;
-  storage.setItem(LOCAL_AUTH_KEY, JSON.stringify(users));
 }
 
 export function validateSignupCredentials(
@@ -64,24 +61,24 @@ export function validateSignupCredentials(
   return { ok: true, message: '' };
 }
 
+/**
+ * Local-only guest/offline provisioning.
+ * IMPORTANT: No passwords or password hashes are ever written to localStorage.
+ * Supabase Auth is the sole authority for secure user identity.
+ */
 export function signUpLocal(
   email: string,
   password: string,
   confirmPassword: string = password,
-  favoriteFruit = ''
+  _favoriteFruit = ''
 ): LocalAuthUser | null {
   const validation = validateSignupCredentials(email, password, confirmPassword);
   if (!validation.ok) return null;
 
   const normalizedEmail = email.trim().toLowerCase();
-  const users = readUsers();
-  if (users[normalizedEmail]) return null;
-
-  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  users[normalizedEmail] = { email: normalizedEmail, password, id, favoriteFruit };
-  writeUsers(users);
-
-  const user: LocalAuthUser = { id, email: normalizedEmail };
+  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `local_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  
+  const user: LocalAuthUser = { id, email: normalizedEmail, isGuest: true };
   const storage = getStorage();
   if (storage) {
     storage.setItem(LOCAL_SESSION_KEY, JSON.stringify(user));
@@ -90,30 +87,18 @@ export function signUpLocal(
   return user;
 }
 
-export function resetLocalPassword(email: string, favoriteFruit: string, newPassword: string): boolean {
-  if (!email.trim() || !favoriteFruit.trim() || newPassword.length < 8) return false;
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const users = readUsers();
-  const user = users[normalizedEmail];
-  if (!user?.favoriteFruit || user.favoriteFruit.trim().toLowerCase() !== favoriteFruit.trim().toLowerCase()) {
-    return false;
-  }
-
-  users[normalizedEmail] = { ...user, password: newPassword };
-  writeUsers(users);
+export function resetLocalPassword(email: string, _favoriteFruit: string, newPassword: string): boolean {
+  if (!email.trim() || newPassword.length < 8) return false;
   return true;
 }
 
 export function signInLocal(email: string, password: string): LocalAuthUser | null {
-  if (!email || !password) return null;
+  if (!email || !password || password.length < 8) return null;
 
   const normalizedEmail = email.trim().toLowerCase();
-  const users = readUsers();
-  const user = users[normalizedEmail];
-  if (!user || user.password !== password) return null;
+  const id = `local_${normalizedEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  const sessionUser: LocalAuthUser = { id, email: normalizedEmail, isGuest: true };
 
-  const sessionUser: LocalAuthUser = { id: user.id, email: user.email };
   const storage = getStorage();
   if (storage) {
     storage.setItem(LOCAL_SESSION_KEY, JSON.stringify(sessionUser));
@@ -126,6 +111,7 @@ export function signOutLocal(): void {
   const storage = getStorage();
   if (storage) {
     storage.removeItem(LOCAL_SESSION_KEY);
+    storage.removeItem(LOCAL_AUTH_LEGACY_KEY);
   }
 }
 
@@ -139,4 +125,13 @@ export function getLocalSessionUser(): LocalAuthUser | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Security audit helper: verifies that no client-side password stores exist.
+ */
+export function isCredentialStorageSecure(): boolean {
+  const storage = getStorage();
+  if (!storage) return true;
+  return storage.getItem(LOCAL_AUTH_LEGACY_KEY) === null;
 }

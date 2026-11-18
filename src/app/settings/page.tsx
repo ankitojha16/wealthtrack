@@ -35,6 +35,8 @@ export default function SettingsPage() {
     investments,
     loans,
     refreshData,
+    user,
+    signOutUser,
   } = useFinance();
 
   const [importStatus, setImportStatus] = useState<string>('');
@@ -80,8 +82,47 @@ export default function SettingsPage() {
           Settings & Data Management
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Configure preferences, export backups, restore data, and control your device-local storage.
+          Configure preferences, export backups, restore data, and manage your account.
         </p>
+      </div>
+
+      {/* Account Section */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-sky-500" />
+          Account & Authentication
+        </h2>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Signed-in Account</span>
+            <span className="text-sm font-bold text-slate-900 dark:text-white">
+              {user?.email || 'Guest / Local Session'}
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
+              {user ? 'Data isolated and secured with Supabase Row Level Security' : 'Data stored locally in browser'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {user ? (
+              <button
+                type="button"
+                onClick={() => signOutUser()}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <Link
+                href="/auth"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-sm shadow-sky-600/30 transition-all"
+              >
+                Login / Register
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Preferences Section */}
@@ -159,7 +200,152 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Data Backup & Export Section */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+          <Download className="w-4 h-4 text-emerald-500" />
+          Data Export & Backup
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Save your financial data as a JSON snapshot or download separate CSV spreadsheets for accounting.
+        </p>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => downloadJSONBackup()}
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 transition-all"
+          >
+            <Download className="w-4 h-4 text-sky-500" />
+            <span>JSON Backup</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => exportTransactionsCSV(transactions)}
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 transition-all"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+            <span>Transactions CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => exportInvestmentsCSV(investments)}
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 transition-all"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
+            <span>Investments CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => exportLoansCSV(loans)}
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 transition-all"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-amber-500" />
+            <span>Loans CSV</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Restore Section */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+          <Upload className="w-4 h-4 text-purple-500" />
+          Restore From Backup
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Restore previous data by selecting a valid WealthTrack JSON backup file.
+        </p>
+
+        {importStatus && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{importStatus}</span>
+          </div>
+        )}
+
+        {importError && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-xs font-semibold">
+            <AlertTriangle className="w-4 h-4" />
+            <span>{importError}</span>
+          </div>
+        )}
+
+        <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer transition-all">
+          <Upload className="w-4 h-4" />
+          <span>Upload Backup JSON</span>
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+        </label>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-rose-200/60 dark:border-rose-900/40 shadow-sm space-y-4">
+        <h2 className="text-sm font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-2">
+          <Trash2 className="w-4 h-4" />
+          Danger Zone
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Permanently remove all records stored in your browser&apos;s local cache.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => setShowDeleteModal(true)}
+          className="px-4 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 hover:bg-rose-100 transition-all"
+        >
+          Clear Local Data
+        </button>
+      </div>
+
+      {/* Confirm Delete Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold text-rose-600 dark:text-rose-400">
+              Clear All Local Data?
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              This action cannot be undone. To confirm, please type <strong className="text-slate-900 dark:text-white">DELETE</strong> below:
+            </p>
+
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Type DELETE"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm text-slate-900 dark:text-white"
+            />
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText('');
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClear}
+                disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE'}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-40 transition-all"
+              >
+                Permanently Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

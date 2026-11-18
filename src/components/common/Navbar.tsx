@@ -18,6 +18,8 @@ import {
   Sun,
   Settings,
   LogIn,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { useFinance } from '@/lib/context/FinanceContext';
 
@@ -27,7 +29,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickAdd }) => {
   const pathname = usePathname();
-  const { settings, updateSettings } = useFinance();
+  const { settings, updateSettings, user, signOutUser } = useFinance();
 
   const navLinks = [
     { label: 'Dashboard', href: '/', icon: Wallet },
@@ -115,13 +117,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickAdd }) => {
             {settings.theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <Link
-            href="/auth"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            Login
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-1.5">
+              <span className="hidden md:inline text-[11px] font-semibold text-slate-500 dark:text-slate-400 max-w-[140px] truncate" title={user.email ?? ''}>
+                {user.email ?? 'Account'}
+              </span>
+              <button
+                type="button"
+                onClick={() => signOutUser()}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/auth"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Login
+            </Link>
+          )}
 
           {/* Settings Link */}
           <Link

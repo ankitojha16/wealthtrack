@@ -117,14 +117,15 @@ export default function InvestmentsPage() {
     color: typeColors[label] || '#0284c7',
   }));
 
-  // Manual stock price refresh handler
+  // Manual stock price refresh handler (parallelized for maximum performance)
   const handleRefreshStockPrices = async () => {
     if (isRefreshingStocks || stocksInvestments.length === 0) return;
     setIsRefreshingStocks(true);
 
     try {
-      for (const stock of stocksInvestments) {
-        if (stock.symbol) {
+      await Promise.allSettled(
+        stocksInvestments.map(async (stock) => {
+          if (!stock.symbol) return;
           const quote = await fetchStockQuote(stock.symbol, stock.exchange || 'NSE');
           if (quote.status === 'success' && quote.price > 0 && stock.quantity) {
             const newCurrentVal = Math.round(stock.quantity * quote.price);
@@ -136,8 +137,8 @@ export default function InvestmentsPage() {
               apiStatus: 'success',
             });
           }
-        }
-      }
+        })
+      );
     } finally {
       setIsRefreshingStocks(false);
     }

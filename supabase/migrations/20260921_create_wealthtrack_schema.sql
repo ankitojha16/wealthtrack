@@ -382,6 +382,7 @@ create table if not exists public.snapshots (
   user_id uuid not null references auth.users(id) on delete cascade,
   "monthYear" text not null,
   net_worth numeric(12,2) not null default 0,
+  "netWorth" numeric(12,2),
   "totalAssets" numeric(12,2) not null default 0,
   "totalLiabilities" numeric(12,2) not null default 0,
   "totalInvestments" numeric(12,2) not null default 0,
@@ -398,6 +399,9 @@ create table if not exists public.snapshots (
 
 create index if not exists idx_snapshots_user_id on public.snapshots (user_id);
 create index if not exists idx_snapshots_month_year on public.snapshots ("monthYear");
+create index if not exists idx_snapshots_user_month on public.snapshots (user_id, "monthYear" desc);
+create index if not exists idx_transactions_user_date on public.transactions (user_id, date desc);
+create index if not exists idx_budgets_user_category on public.budgets (user_id, category);
 
 alter table public.snapshots enable row level security;
 

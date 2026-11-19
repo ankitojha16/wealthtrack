@@ -51,12 +51,14 @@ create policy "transactions_delete_own" on public.transactions
 
 -- Compatibility views: the app stores all financial movements in a single transactions table with a
 -- type column, but downstream reporting often needs the expense and income subsets exposed as views.
-create or replace view public.expenses as
+create or replace view public.expenses
+with (security_invoker = true) as
 select *
 from public.transactions
 where type = 'expense';
 
-create or replace view public.income as
+create or replace view public.income
+with (security_invoker = true) as
 select *
 from public.transactions
 where type = 'income';
@@ -125,7 +127,8 @@ create table if not exists public.investments (
   "apiLastUpdated" text,
   "apiStatus" text check ("apiStatus" in ('success', 'failed', 'unavailable')),
   created_at timestamptz generated always as (to_timestamp("createdAt" / 1000.0)) stored,
-  updated_at timestamptz generated always as (to_timestamp("createdAt" / 1000.0)) stored
+  updated_at timestamptz generated always as (to_timestamp("createdAt" / 1000.0)) stored,
+  unique (id, user_id)
 );
 
 create index if not exists idx_investments_user_id on public.investments (user_id);
@@ -156,7 +159,7 @@ create policy "investments_delete_own" on public.investments
 create table if not exists public.stock_holdings (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
-  investment_id text not null references public.investments(id) on delete cascade,
+  investment_id text not null,
   symbol text not null,
   exchange text not null default 'NSE',
   quantity numeric(12,4) not null default 0,
@@ -165,7 +168,8 @@ create table if not exists public.stock_holdings (
   "lastUpdatedAt" bigint not null default (extract(epoch from now()) * 1000)::bigint,
   created_at timestamptz generated always as (to_timestamp("lastUpdatedAt" / 1000.0)) stored,
   updated_at timestamptz generated always as (to_timestamp("lastUpdatedAt" / 1000.0)) stored,
-  unique (user_id, investment_id)
+  unique (user_id, investment_id),
+  foreign key (investment_id, user_id) references public.investments(id, user_id) on delete cascade
 );
 
 create index if not exists idx_stock_holdings_user_id on public.stock_holdings (user_id);
@@ -207,7 +211,8 @@ create table if not exists public.goals (
   "createdAt" bigint not null default (extract(epoch from now()) * 1000)::bigint,
   "updatedAt" bigint not null default (extract(epoch from now()) * 1000)::bigint,
   created_at timestamptz generated always as (to_timestamp("createdAt" / 1000.0)) stored,
-  updated_at timestamptz generated always as (to_timestamp("updatedAt" / 1000.0)) stored
+  updated_at timestamptz generated always as (to_timestamp("updatedAt" / 1000.0)) stored,
+  unique (id, user_id)
 );
 
 create index if not exists idx_goals_user_id on public.goals (user_id);
@@ -236,14 +241,15 @@ create policy "goals_delete_own" on public.goals
 create table if not exists public.goal_contributions (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
-  goal_id text not null references public.goals(id) on delete cascade,
+  goal_id text not null,
   date date not null,
   amount numeric(12,2) not null check (amount >= 0),
   notes text,
   "createdAt" bigint not null default (extract(epoch from now()) * 1000)::bigint,
   "updatedAt" bigint not null default (extract(epoch from now()) * 1000)::bigint,
   created_at timestamptz generated always as (to_timestamp("createdAt" / 1000.0)) stored,
-  updated_at timestamptz generated always as (to_timestamp("updatedAt" / 1000.0)) stored
+  updated_at timestamptz generated always as (to_timestamp("updatedAt" / 1000.0)) stored,
+  foreign key (goal_id, user_id) references public.goals(id, user_id) on delete cascade
 );
 
 create index if not exists idx_goal_contributions_user_id on public.goal_contributions (user_id);

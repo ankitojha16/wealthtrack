@@ -17,7 +17,15 @@ import * as db from '@/lib/db';
 import { calculateFinancialHealthScore } from '@/lib/calculations';
 import { getCurrentDateString, getCurrentMonthYearString } from '@/lib/formatters';
 import { supabase, hasSupabaseConfig } from '@/lib/supabase/client';
-import { getLocalSessionUser, resetLocalPassword, signInLocal, signOutLocal, signUpLocal } from '@/lib/auth/localAuth';
+import {
+  getLocalSessionUser,
+  resetLocalPassword,
+  signInLocal,
+  signOutLocal,
+  signUpLocal,
+  isLocalMigrationCompleted,
+  markLocalMigrationCompleted,
+} from '@/lib/auth/localAuth';
 import {
   getActiveUser,
   listRecords,
@@ -33,6 +41,8 @@ type AuthUser = { id: string; email?: string | null };
 
 interface FinanceContextType {
   loading: boolean;
+  syncError: string | null;
+  retrySync: () => Promise<void>;
   transactions: Transaction[];
   budgets: CategoryBudget[];
   investments: Investment[];
@@ -115,7 +125,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<UserSettings>(db.DEFAULT_SETTINGS);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const refreshingPromiseRef = React.useRef<Promise<void> | null>(null);
+  const lastLoadedUserIdRef = React.useRef<string | null | undefined>(undefined);
 
   const refreshData = useCallback(async () => {
     if (refreshingPromiseRef.current) {
@@ -168,6 +180,44 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
             : db.getSettings(),
         ]);
 
+        // Priority 1: Preserve local financial records and migrate to cloud on first Supabase login
+        if (userId && !isLocalMigrationCompleted(userId) && (loadedTx?.length === 0 && loadedInv?.length === 0)) {
+          try {
+            const localTxs = await db.getTransactions();
+            const localBudgets = await db.getBudgets();
+            const localInvs = await db.getInvestments();
+            const localGoals = await db.getGoals();
+            const localLoans = await db.getLoans();
+            const localAssets = await db.getAssets();
+            const localLiabilities = await db.getLiabilities();
+
+            for (const tx of localTxs) {
+              await upsertRecord('transactions', { ...tx, user_id: userId }, userId).catch(() => {});
+            }
+            for (const b of localBudgets) {
+              await upsertRecord('budgets', { ...b, user_id: userId }, userId).catch(() => {});
+            }
+            for (const inv of localInvs) {
+              await upsertRecord('investments', { ...inv, user_id: userId }, userId).catch(() => {});
+            }
+            for (const g of localGoals) {
+              await upsertRecord('goals', { ...g, user_id: userId }, userId).catch(() => {});
+            }
+            for (const l of localLoans) {
+              await upsertRecord('loans', { ...l, user_id: userId }, userId).catch(() => {});
+            }
+            for (const a of localAssets) {
+              await upsertRecord('assets', { ...a, user_id: userId }, userId).catch(() => {});
+            }
+            for (const li of localLiabilities) {
+              await upsertRecord('liabilities', { ...li, user_id: userId }, userId).catch(() => {});
+            }
+            markLocalMigrationCompleted(userId);
+          } catch (migrationErr) {
+            console.warn('[migration] Non-blocking local record migration notice:', migrationErr);
+          }
+        }
+
         setUser(activeUser);
         setTransactions(loadedTx || []);
         setBudgets(loadedBudgets || []);
@@ -178,8 +228,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setLiabilities(loadedLiabilities || []);
         setSnapshots(loadedSnapshots || []);
         setSettings(loadedSettings || db.DEFAULT_SETTINGS);
-      } catch (err) {
+        setSyncError(null);
+        lastLoadedUserIdRef.current = userId;
+      } catch (err: any) {
         console.error('Error loading WealthTrack data:', err);
+        // Priority 4: Preserve previously loaded data on failure!
+        // Never convert database failures into false zeros or empty states.
+        setSyncError(err?.message || 'Database connection issue. Showing previously cached financial data.');
       } finally {
         setLoading(false);
         setAuthReady(true);
@@ -194,6 +249,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const retrySync = useCallback(async () => {
+    await refreshData();
+  }, [refreshData]);
+
   useEffect(() => {
     refreshData();
   }, [refreshData]);
@@ -202,13 +261,18 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session) => {
+      const newUserId = session?.user?.id ?? null;
+      // Priority 5: Deduplicate initial authentication refreshes
+      if (lastLoadedUserIdRef.current === newUserId && authReady) {
+        return;
+      }
       const newUser = session?.user ? { id: session.user.id, email: session.user.email ?? null } : null;
       setUser(newUser);
       await refreshData();
     });
 
     return () => subscription.unsubscribe();
-  }, [refreshData]);
+  }, [refreshData, authReady]);
 
   // Handle dark/light theme class on document element
   useEffect(() => {
@@ -392,8 +456,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const saveCategoryBudget = async (category: string, monthlyLimit: number) => {
+    const safeKey = category.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const budgetId = user?.id ? `b_${user.id}_${safeKey}` : `b_local_${safeKey}`;
     const budget: CategoryBudget = {
-      id: user?.id ? `b_${user.id}_${category}` : `b_${category}`,
+      id: budgetId,
       category,
       monthlyLimit,
       spent: 0,
@@ -401,7 +467,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (hasSupabaseConfig() && user?.id) {
       const saved = await upsertRecord<CategoryBudget & { user_id: string }>('budgets', { ...budget, user_id: user.id }, user.id);
       setBudgets((prev) => {
-        const idx = prev.findIndex((b) => b.category === category);
+        const idx = prev.findIndex((b) => b.category.toLowerCase() === category.toLowerCase());
         if (idx >= 0) {
           const next = [...prev];
           next[idx] = saved;
@@ -413,7 +479,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.saveBudget(budget);
     setBudgets((prev) => {
-      const idx = prev.findIndex((b) => b.category === category);
+      const idx = prev.findIndex((b) => b.category.toLowerCase() === category.toLowerCase());
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = budget;
@@ -820,6 +886,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     <FinanceContext.Provider
       value={{
         loading,
+        syncError,
+        retrySync,
         transactions,
         budgets,
         investments,

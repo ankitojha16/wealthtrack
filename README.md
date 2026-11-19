@@ -1,76 +1,110 @@
-# WealthTrack
+# WealthTrack 2.1
 
 > **Track Your Money. Understand Your Wealth.**  
-> Founded by ANKIT KUMAR
+> Founded by ANKIT KUMAR  
+> **GitHub:** [https://github.com/ankitojha16/wealthtrack](https://github.com/ankitojha16/wealthtrack)  
+> **Production:** [https://wealthtrack-gamma.vercel.app/](https://wealthtrack-gamma.vercel.app/)
 
-WealthTrack is a personal finance app for tracking budgets, investments, goals, loans, assets, liabilities, and net worth. It is built with Next.js, React, TypeScript, and Tailwind CSS.
+WealthTrack is a personal finance management platform designed for tracking cash flow, category budgets, investments, financial goals, loans, assets, liabilities, and net worth. It is engineered with Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Supabase Auth, and PostgreSQL with Row-Level Security (RLS).
 
-## Features
+---
 
-- **Dashboard and reports:** Review cash flow, net worth, assets, liabilities, and financial health.
-- **Budgeting:** Record income and expenses, set category limits, and review spending.
-- **Investments:** Track manually entered balances and returns for supported investment types.
-- **Goals and loans:** Track goal contributions, loan balances, and EMI progress.
-- **Calculators and learning:** Use financial calculators and browse personal-finance articles.
-- **Export and import:** Back up financial records using the tools in Settings.
-- **Offline support:** The installable PWA uses a service worker to cache parts of the app.
+## Core Capabilities
 
-## Data storage and authentication
+- **Financial Dashboard & Health Score:** Real-time net worth calculation, liquid emergency fund runway, debt-to-income metrics, and algorithmic financial health grading (0–100).
+- **Multi-Tenant Budget Planner:** Monthly spending limits per category with user-scoped primary keys to prevent multi-user collisions.
+- **Investment Portfolio:** Manual tracking for SIPs, Lumpsum mutual funds, and fixed deposits with automated annualized CAGR/XIRR calculators.
+- **Goals & Debt Management:** Goal milestone tracking with contribution history and comprehensive loan EMI amortization schedules.
+- **Financial Calculators & Learning:** Interactive calculators for EMI, SIP, PPF (80C capped), SWP, and compound interest.
+- **Offline & PWA Support:** Progressive Web App with client-side caching and offline local fallback.
 
-The app supports two modes:
+---
 
-- **Supabase mode:** When a Supabase URL and anon key are configured, users can sign up and sign in, and authenticated financial records sync to Supabase.
-- **Local-only mode:** Without Supabase configuration, accounts and financial records are stored in the browser. They are not synced across devices.
+## Architecture: Storage & Authentication Modes
 
-Local-only accounts and Supabase accounts are separate. A local-only account is not migrated when Supabase is configured later.
+WealthTrack supports dual operating modes depending on environment configuration:
 
-### Configure Supabase
+### 1. Supabase Mode (Cloud Synchronized)
+When `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are provided:
+- **Authentication Authority:** Supabase Auth (GoTrue) is the sole authority. User passwords are encrypted server-side using bcrypt over TLS. No passwords or password hashes are ever stored in client browser `localStorage`.
+- **Verified Password Recovery:** Password resets are handled via secure, verified email recovery links dispatched to the user's verified address (`supabase.auth.resetPasswordForEmail`).
+- **Database Isolation & Security:** All PostgreSQL tables have Row Level Security (`ROW LEVEL SECURITY ENABLED`). Access is restricted using `auth.uid() = user_id`.
+- **Security Invoker Views:** Database views (`public.expenses`, `public.income`) enforce `WITH (security_invoker = true)` to ensure view queries respect the calling tenant's RLS policies.
+- **Composite Ownership Constraints:** Child tables (`stock_holdings`, `goal_contributions`) utilize composite foreign keys `(investment_id, user_id)` and `(goal_id, user_id)` preventing cross-user entity attachment.
 
-1. Create a Supabase project and apply [`supabase/migrations/20260921_create_wealthtrack_schema.sql`](supabase/migrations/20260921_create_wealthtrack_schema.sql) to its database.
-2. Set these environment variables for the app:
+### 2. Local-Only Mode (Offline / Guest)
+When Supabase environment variables are omitted:
+- The app operates as an offline guest workspace (`isGuest: true`).
+- Financial records are stored exclusively inside the browser's IndexedDB (`WealthTrackDB`) with fallback to scoped local storage.
+- **Data Preservation Migration:** When a user with local data creates or logs into a Supabase account, their local records are safely migrated to the cloud without deleting or corrupting local offline records.
 
-   ```dotenv
-   NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-   SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
-   ```
+---
 
-   The service-role key is required by server-side signup and password recovery routes. Keep it secret: do not prefix it with `NEXT_PUBLIC_` or commit it to source control.
-3. Configure the same variables in your hosting provider and redeploy after changing them.
+## Database Configuration & SQL Migrations
 
-For local development, create `.env.local` in the project root and add the variables there. If Supabase variables are omitted, the app runs in local-only mode.
+To configure the PostgreSQL database on Supabase:
+1. Log in to the Supabase project dashboard.
+2. Navigate to the **SQL Editor**.
+3. Apply the migrations in sequential order:
+   - [`supabase/migrations/20260921_create_wealthtrack_schema.sql`](supabase/migrations/20260921_create_wealthtrack_schema.sql) (Base schema, tables, compound indexes, and RLS policies).
+   - [`supabase/migrations/20261119_wealthtrack_2_1_security_fixes.sql`](supabase/migrations/20261119_wealthtrack_2_1_security_fixes.sql) (Security invoker views, composite ownership constraints, and `handle_updated_at` modification triggers).
 
-## Getting started
+---
 
-Requirements: Node.js 20 or later and npm.
+## Environment Variables
 
-```bash
-npm install
-npm run dev
+Configure the following variables in `.env.local` for local development or within the Vercel project settings:
+
+```dotenv
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://ccxeejvnrwfqgkegqqnt.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
+
+# Stock Market Data (Optional)
+TEJHQ_API_KEY=tej_live_...
+TEJHQ_BASE_URL=https://api.tejhq.dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+> [!WARNING]
+> Keep `SUPABASE_SERVICE_ROLE_KEY` secret. Never prefix it with `NEXT_PUBLIC_` and never expose it in client-side bundles.
 
-## Tests and production build
+---
+
+## Development & Testing
 
 ```bash
+# Install dependencies
+npm install
+
+# Run local development server
+npm run dev
+
+# Run automated test suites (34 tests covering Auth, RLS, Math, Budgets, Redirects)
 npm test
+
+# Type safety check
+npx tsc --noEmit
+
+# Lint check
+npm run lint
+
+# Production compilation
 npm run build
+
+# Start production server
 npm start
 ```
 
-`npm start` serves the production build created by `npm run build`.
+---
 
-## Deployment
+## Privacy & Security Commitment
 
-The project is configured for Vercel. Connect the GitHub repository to the Vercel project, configure the production environment variables above, and deploy the `main` branch. Keep secrets in Vercel’s Environment Variables settings, not in Git.
+- **Zero Plaintext/Hash Client Storage:** Client `localStorage` is automatically purged of legacy user tables.
+- **Open Redirect Protection:** All navigation flows validate destination paths using `sanitizeRedirectUrl` to reject external URL forwarding.
+- **Fault-Tolerant State Hydration:** In the event of a network disruption or database failure, the app preserves previously loaded in-memory data rather than displaying false zero balances.
 
-## Tech stack
-
-- Next.js App Router and React
-- TypeScript and Tailwind CSS
-- Supabase Auth and Postgres for synced accounts; browser storage for local-only mode
-- Node.js native test runner (`node:test`)
+---
 
 ## License
 

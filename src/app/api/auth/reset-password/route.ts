@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isRecoveryFruit, normalizeRecoveryFruit } from '@/lib/auth/recovery';
+import { isRateLimited } from '@/lib/auth/serverRateLimit';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCK_DURATION_MS = 15 * 60 * 1000;
-
 export async function POST(request: NextRequest) {
-  let body: { email?: string; favoriteFruit?: string; newPassword?: string };
+  let body: { email?: string };
   try {
     body = await request.json();
   } catch {
@@ -14,11 +11,18 @@ export async function POST(request: NextRequest) {
   }
 
   const email = body.email?.trim().toLowerCase() ?? '';
-  const favoriteFruit = body.favoriteFruit ?? '';
-  const newPassword = body.newPassword ?? '';
 
-  if (!email || !email.includes('@') || !isRecoveryFruit(favoriteFruit) || newPassword.length < 8) {
-    return NextResponse.json({ error: 'Enter a valid email, favorite fruit, and new password (at least 8 characters).' }, { status: 400 });
+  if (!email || !email.includes('@')) {
+    return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
+  }
+
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+
+  if (isRateLimited(`reset-ip:${clientIp}`, 5, 15 * 60 * 1000)
+    || isRateLimited(`reset-email:${email}`, 3, 15 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many recovery attempts. Try again in 15 minutes.' }, { status: 429 });
   }
 
   const admin = createSupabaseAdminClient();
@@ -26,59 +30,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Supabase server admin is not configured.' }, { status: 503 });
   }
 
-  const genericFailure = 'The email or favorite fruit did not match.';
-  const usersPerPage = 1000;
-  let matchingUser: { id: string; app_metadata?: Record<string, unknown> } | undefined;
-  for (let page = 1; page <= 5; page += 1) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: usersPerPage });
-    if (error) {
-      console.error('[auth] Could not check account recovery:', error.message);
-      return NextResponse.json({ error: 'Password recovery is temporarily unavailable.' }, { status: 503 });
-    }
-
-    matchingUser = data.users.find((user) => user.email?.toLowerCase() === email);
-    if (matchingUser || data.users.length < usersPerPage) break;
-  }
-
-  if (!matchingUser) {
-    return NextResponse.json({ error: genericFailure }, { status: 400 });
-  }
-
-  const appMetadata = matchingUser.app_metadata ?? {};
-  const lockedUntil = Date.parse(String(appMetadata.recovery_locked_until ?? ''));
-  if (Number.isFinite(lockedUntil) && lockedUntil > Date.now()) {
-    return NextResponse.json({ error: 'Too many attempts. Try again in 15 minutes.' }, { status: 429 });
-  }
-
-  if (normalizeRecoveryFruit(String(appMetadata.favorite_fruit ?? '')) !== normalizeRecoveryFruit(favoriteFruit)) {
-    const failedCount = Number(appMetadata.recovery_failed_attempts ?? 0) + 1;
-    const isLocked = failedCount >= MAX_FAILED_ATTEMPTS;
-    const { error: attemptError } = await admin.auth.admin.updateUserById(matchingUser.id, {
-      app_metadata: {
-        ...appMetadata,
-        recovery_failed_attempts: isLocked ? 0 : failedCount,
-        recovery_locked_until: isLocked ? new Date(Date.now() + LOCK_DURATION_MS).toISOString() : null,
+  // Priority 1: Verified email-based password recovery.
+  // Generate a legitimate recovery link or trigger reset email via Supabase Auth
+  try {
+    const { error } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: {
+        redirectTo: `${request.nextUrl.origin}/settings`,
       },
     });
-    if (attemptError) {
-      console.error('[auth] Could not record recovery attempt:', attemptError.message);
-      return NextResponse.json({ error: 'Password recovery is temporarily unavailable.' }, { status: 503 });
+
+    if (error) {
+      console.warn('[auth] Recovery link generation note:', error.message);
     }
-    return NextResponse.json({ error: genericFailure }, { status: 400 });
+  } catch (err: any) {
+    console.error('[auth] Password recovery error:', err?.message);
   }
 
-  const { error: updateError } = await admin.auth.admin.updateUserById(matchingUser.id, {
-    password: newPassword,
-    app_metadata: {
-      ...appMetadata,
-      recovery_failed_attempts: 0,
-      recovery_locked_until: null,
-    },
+  // Always return generic success to prevent email enumeration attacks
+  return NextResponse.json({
+    ok: true,
+    message: 'If an account exists for this email, a verified password reset link has been dispatched.',
   });
-  if (updateError) {
-    console.error('[auth] Password update failed:', updateError.message);
-    return NextResponse.json({ error: 'Unable to reset password. Please try again.' }, { status: 503 });
-  }
-
-  return NextResponse.json({ ok: true });
 }

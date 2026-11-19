@@ -83,6 +83,11 @@ export async function resetPasswordForEmail(email: string): Promise<void> {
   }
 }
 
+export type FetchResult<T> = {
+  data: T[] | null;
+  error: Error | null;
+};
+
 export async function listRecords<T>(table: string, userId: string): Promise<T[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
@@ -92,8 +97,9 @@ export async function listRecords<T>(table: string, userId: string): Promise<T[]
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error(`[supabase:${table}] list error`, error);
-    return [];
+    const errorMsg = `[supabase:${table}] query failed: ${error.message}`;
+    console.error(errorMsg, error);
+    throw new Error(errorMsg);
   }
 
   const rows = (data ?? []) as any[];
@@ -106,6 +112,15 @@ export async function listRecords<T>(table: string, userId: string): Promise<T[]
   }
 
   return rows as T[];
+}
+
+export async function safeListRecords<T>(table: string, userId: string): Promise<FetchResult<T>> {
+  try {
+    const data = await listRecords<T>(table, userId);
+    return { data, error: null };
+  } catch (err: any) {
+    return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+  }
 }
 
 export async function upsertRecord<T extends { id?: string; user_id?: string | null; key?: string; category?: string; monthYear?: string }>(

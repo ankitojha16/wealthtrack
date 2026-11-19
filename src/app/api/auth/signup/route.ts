@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isRecoveryFruit, normalizeRecoveryFruit } from '@/lib/auth/recovery';
 import { isRateLimited } from '@/lib/auth/serverRateLimit';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
-  let body: { email?: string; password?: string; favoriteFruit?: string };
+  let body: { email?: string; password?: string };
   try {
     body = await request.json();
   } catch {
@@ -13,10 +12,9 @@ export async function POST(request: NextRequest) {
 
   const email = body.email?.trim().toLowerCase() ?? '';
   const password = body.password ?? '';
-  const favoriteFruit = body.favoriteFruit ?? '';
 
-  if (!email || !email.includes('@') || password.length < 8 || !isRecoveryFruit(favoriteFruit)) {
-    return NextResponse.json({ error: 'Enter a valid email, password (at least 8 characters), and favorite fruit.' }, { status: 400 });
+  if (!email || !email.includes('@') || password.length < 8) {
+    return NextResponse.json({ error: 'Enter a valid email and password (at least 8 characters).' }, { status: 400 });
   }
 
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
@@ -32,24 +30,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Supabase server admin is not configured.' }, { status: 503 });
   }
 
+  // Priority 1: Do NOT auto-confirm email (email_confirm: false).
+  // Require legitimate email verification.
   const { data, error } = await admin.auth.admin.createUser({
     email,
     password,
-    email_confirm: true,
-    app_metadata: {
-      favorite_fruit: normalizeRecoveryFruit(favoriteFruit),
-      recovery_failed_attempts: 0,
-      recovery_locked_until: null,
-    },
+    email_confirm: false,
   });
 
   if (error || !data.user) {
-    const duplicate = error?.message.toLowerCase().includes('already registered');
+    const duplicate = error?.message.toLowerCase().includes('already registered') ||
+                      error?.message.toLowerCase().includes('already exists');
     return NextResponse.json(
-      { error: duplicate ? 'An account with this email already exists.' : 'Unable to create the account.' },
+      { error: duplicate ? 'An account with this email already exists.' : (error?.message || 'Unable to create the account.') },
       { status: duplicate ? 409 : 400 }
     );
   }
 
-  return NextResponse.json({ id: data.user.id, email });
+  return NextResponse.json({
+    id: data.user.id,
+    email,
+    message: 'Account created. Please check your email to verify your account before signing in.',
+  });
 }

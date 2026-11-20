@@ -4,3 +4,5 @@ supabase
 *.md
 .git
 .github
+.next
+node_modules

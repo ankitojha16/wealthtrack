@@ -10,6 +10,7 @@ import { Transaction } from '@/types';
 import { Modal } from '@/components/common/Modal';
 import { exportTransactionsCSV } from '@/lib/export-import';
 import { CSVImportModal } from '@/components/budget/CSVImportModal';
+import { SubscriptionsManager } from '@/components/budget/SubscriptionsManager';
 import {
   PieChart,
   Plus,
@@ -25,6 +26,7 @@ import {
   Calendar,
   Download,
   UploadCloud,
+  Repeat,
 } from 'lucide-react';
 
 export default function BudgetPage() {
@@ -51,6 +53,7 @@ export default function BudgetPage() {
 
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+  const [isSubscriptionsOpen, setIsSubscriptionsOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [txDefaultType, setTxDefaultType] = useState<'expense' | 'income'>('expense');
 
@@ -187,6 +190,15 @@ export default function BudgetPage() {
           >
             <UploadCloud className="w-3.5 h-3.5 text-sky-500" />
             <span>Import CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsSubscriptionsOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-xs transition-all"
+          >
+            <Repeat className="w-3.5 h-3.5 text-purple-500" />
+            <span>Subscriptions & Bills</span>
           </button>
 
           <button
@@ -627,6 +639,12 @@ export default function BudgetPage() {
       <CSVImportModal
         isOpen={isCSVModalOpen}
         onClose={() => setIsCSVModalOpen(false)}
+      />
+
+      {/* Subscriptions & Recurring Bills Modal */}
+      <SubscriptionsManager
+        isOpen={isSubscriptionsOpen}
+        onClose={() => setIsSubscriptionsOpen(false)}
       />
     </div>
   );

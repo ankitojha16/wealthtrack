@@ -6,6 +6,7 @@ import { formatCurrency, formatPercent, formatDate } from '@/lib/formatters';
 import { InvestmentModal } from '@/components/investments/InvestmentModal';
 import { ValueUpdateModal } from '@/components/investments/ValueUpdateModal';
 import { InvestmentDetailsModal } from '@/components/investments/InvestmentDetailsModal';
+import { PortfolioRebalanceModal } from '@/components/investments/PortfolioRebalanceModal';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { Investment, InvestmentType } from '@/types';
 import { INVESTMENT_TYPES } from '@/lib/data/categories';
@@ -22,6 +23,7 @@ import {
   Sparkles,
   Layers,
   ArrowRight,
+  Scale,
 } from 'lucide-react';
 
 export default function InvestmentsPage() {
@@ -41,6 +43,7 @@ export default function InvestmentsPage() {
 
 
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isRebalanceModalOpen, setIsRebalanceModalOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
   const [newInvestmentType, setNewInvestmentType] = useState<InvestmentType>('SIP');
   const [updateValTarget, setUpdateValTarget] = useState<Investment | null>(null);
@@ -175,6 +178,15 @@ export default function InvestmentsPage() {
           >
             <LineChart className="w-4 h-4 text-sky-400" />
             <span>Add Stock</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsRebalanceModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-xs transition-all"
+          >
+            <Scale className="w-3.5 h-3.5 text-sky-500" />
+            <span>Rebalance Portfolio</span>
           </button>
 
           {stocksInvestments.length > 0 && (
@@ -555,6 +567,13 @@ export default function InvestmentsPage() {
         }}
         onUpdateValue={(inv) => setUpdateValTarget(inv)}
         onDelete={(id) => removeInvestment(id)}
+      />
+
+      {/* Portfolio Rebalancer & Asset Allocation Modal */}
+      <PortfolioRebalanceModal
+        isOpen={isRebalanceModalOpen}
+        onClose={() => setIsRebalanceModalOpen(false)}
+        investments={investments}
       />
     </div>
   );

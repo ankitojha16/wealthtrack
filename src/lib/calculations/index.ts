@@ -845,3 +845,329 @@ export function calculateFinancialHealthScore(params: {
     },
   };
 }
+
+/**
+ * 21. Portfolio Rebalancing Calculator
+ */
+export interface AssetAllocationMap {
+  equity: number;
+  debt: number;
+  gold: number;
+  cash: number;
+}
+
+export interface RebalanceTrade {
+  assetClass: 'equity' | 'debt' | 'gold' | 'cash';
+  label: string;
+  currentAmount: number;
+  currentPct: number;
+  targetPct: number;
+  targetAmount: number;
+  driftPct: number;
+  action: 'buy' | 'sell' | 'hold';
+  actionAmount: number;
+}
+
+export function calculatePortfolioRebalance(
+  currentHoldings: AssetAllocationMap,
+  targetPercentages: AssetAllocationMap
+): {
+  totalValue: number;
+  trades: RebalanceTrade[];
+  maxDriftPct: number;
+  isRebalanceNeeded: boolean;
+} {
+  const totalValue =
+    currentHoldings.equity +
+    currentHoldings.debt +
+    currentHoldings.gold +
+    currentHoldings.cash;
+
+  const assetClasses: { key: keyof AssetAllocationMap; label: string }[] = [
+    { key: 'equity', label: 'Equity (Stocks & Mutual Funds)' },
+    { key: 'debt', label: 'Debt (Fixed Income & Bonds)' },
+    { key: 'gold', label: 'Gold & Commodities' },
+    { key: 'cash', label: 'Cash & Liquid Savings' },
+  ];
+
+  if (totalValue <= 0) {
+    return {
+      totalValue: 0,
+      trades: assetClasses.map((ac) => ({
+        assetClass: ac.key,
+        label: ac.label,
+        currentAmount: 0,
+        currentPct: 0,
+        targetPct: targetPercentages[ac.key] || 0,
+        targetAmount: 0,
+        driftPct: 0,
+        action: 'hold',
+        actionAmount: 0,
+      })),
+      maxDriftPct: 0,
+      isRebalanceNeeded: false,
+    };
+  }
+
+  let maxDriftPct = 0;
+  const trades: RebalanceTrade[] = assetClasses.map((ac) => {
+    const curVal = currentHoldings[ac.key] || 0;
+    const curPct = (curVal / totalValue) * 100;
+    const tgtPct = targetPercentages[ac.key] || 0;
+    const tgtVal = (tgtPct / 100) * totalValue;
+    const driftPct = curPct - tgtPct;
+    if (Math.abs(driftPct) > maxDriftPct) {
+      maxDriftPct = Math.abs(driftPct);
+    }
+
+    const diff = tgtVal - curVal;
+    let action: 'buy' | 'sell' | 'hold' = 'hold';
+    if (Math.abs(driftPct) >= 1.5) {
+      action = diff > 0 ? 'buy' : 'sell';
+    }
+
+    return {
+      assetClass: ac.key,
+      label: ac.label,
+      currentAmount: Math.round(curVal),
+      currentPct: Math.round(curPct * 10) / 10,
+      targetPct: tgtPct,
+      targetAmount: Math.round(tgtVal),
+      driftPct: Math.round(driftPct * 10) / 10,
+      action,
+      actionAmount: Math.round(Math.abs(diff)),
+    };
+  });
+
+  return {
+    totalValue: Math.round(totalValue),
+    trades,
+    maxDriftPct: Math.round(maxDriftPct * 10) / 10,
+    isRebalanceNeeded: maxDriftPct >= 5, // Alert if drift exceeds 5%
+  };
+}
+
+/**
+ * 22. Indian Income Tax Regime Comparator (FY 2024-25 & FY 2025-26)
+ */
+export interface TaxRegimeBreakdown {
+  grossIncome: number;
+  standardDeduction: number;
+  exemptionsAndDeductions: number;
+  taxableIncome: number;
+  taxBeforeCess: number;
+  rebate87A: number;
+  cess: number;
+  totalTax: number;
+  effectiveRate: number;
+}
+
+export function calculateTaxRegimes(
+  annualIncome: number,
+  deductions: {
+    section80C?: number;
+    section80D?: number;
+    homeLoanInterest24b?: number;
+    otherDeductions?: number;
+  } = {}
+): {
+  oldRegime: TaxRegimeBreakdown;
+  newRegime: TaxRegimeBreakdown;
+  recommendedRegime: 'new' | 'old' | 'equal';
+  taxSavings: number;
+} {
+  const gross = Math.max(0, annualIncome);
+
+  // --- 1. Old Tax Regime ---
+  const oldStdDeduction = 50000;
+  const ded80C = Math.min(150000, Math.max(0, deductions.section80C || 0));
+  const ded80D = Math.min(50000, Math.max(0, deductions.section80D || 0));
+  const ded24b = Math.min(200000, Math.max(0, deductions.homeLoanInterest24b || 0));
+  const otherDed = Math.max(0, deductions.otherDeductions || 0);
+  const totalOldDeductions = oldStdDeduction + ded80C + ded80D + ded24b + otherDed;
+
+  const oldTaxable = Math.max(0, gross - totalOldDeductions);
+  let oldTax = 0;
+  if (oldTaxable > 1000000) {
+    oldTax += (oldTaxable - 1000000) * 0.3 + 500000 * 0.2 + 250000 * 0.05;
+  } else if (oldTaxable > 500000) {
+    oldTax += (oldTaxable - 500000) * 0.2 + 250000 * 0.05;
+  } else if (oldTaxable > 250000) {
+    oldTax += (oldTaxable - 250000) * 0.05;
+  }
+
+  // Section 87A rebate for Old Regime (up to 5L taxable income)
+  let oldRebate = 0;
+  if (oldTaxable <= 500000) {
+    oldRebate = oldTax;
+    oldTax = 0;
+  }
+  const oldCess = Math.round(oldTax * 0.04);
+  const oldTotal = Math.round(oldTax + oldCess);
+
+  // --- 2. New Tax Regime (FY 2024-25 & 2025-26) ---
+  const newStdDeduction = 75000;
+  const newTaxable = Math.max(0, gross - newStdDeduction);
+  let newTax = 0;
+  if (newTaxable > 1500000) {
+    newTax += (newTaxable - 1500000) * 0.3 + 300000 * 0.2 + 200000 * 0.15 + 300000 * 0.1 + 400000 * 0.05;
+  } else if (newTaxable > 1200000) {
+    newTax += (newTaxable - 1200000) * 0.2 + 200000 * 0.15 + 300000 * 0.1 + 400000 * 0.05;
+  } else if (newTaxable > 1000000) {
+    newTax += (newTaxable - 1000000) * 0.15 + 300000 * 0.1 + 400000 * 0.05;
+  } else if (newTaxable > 700000) {
+    newTax += (newTaxable - 700000) * 0.1 + 400000 * 0.05;
+  } else if (newTaxable > 300000) {
+    newTax += (newTaxable - 300000) * 0.05;
+  }
+
+  // Section 87A rebate for New Regime (up to 7L taxable income, effectively 7.75L gross)
+  let newRebate = 0;
+  if (newTaxable <= 700000) {
+    newRebate = newTax;
+    newTax = 0;
+  }
+  const newCess = Math.round(newTax * 0.04);
+  const newTotal = Math.round(newTax + newCess);
+
+  let recommendedRegime: 'new' | 'old' | 'equal' = 'equal';
+  let taxSavings = 0;
+  if (newTotal < oldTotal) {
+    recommendedRegime = 'new';
+    taxSavings = oldTotal - newTotal;
+  } else if (oldTotal < newTotal) {
+    recommendedRegime = 'old';
+    taxSavings = newTotal - oldTotal;
+  }
+
+  return {
+    oldRegime: {
+      grossIncome: Math.round(gross),
+      standardDeduction: oldStdDeduction,
+      exemptionsAndDeductions: totalOldDeductions - oldStdDeduction,
+      taxableIncome: Math.round(oldTaxable),
+      taxBeforeCess: Math.round(oldTax),
+      rebate87A: Math.round(oldRebate),
+      cess: oldCess,
+      totalTax: oldTotal,
+      effectiveRate: gross > 0 ? Math.round((oldTotal / gross) * 1000) / 10 : 0,
+    },
+    newRegime: {
+      grossIncome: Math.round(gross),
+      standardDeduction: newStdDeduction,
+      exemptionsAndDeductions: 0,
+      taxableIncome: Math.round(newTaxable),
+      taxBeforeCess: Math.round(newTax),
+      rebate87A: Math.round(newRebate),
+      cess: newCess,
+      totalTax: newTotal,
+      effectiveRate: gross > 0 ? Math.round((newTotal / gross) * 1000) / 10 : 0,
+    },
+    recommendedRegime,
+    taxSavings: Math.round(taxSavings),
+  };
+}
+
+/**
+ * 23. FIRE (Financial Independence, Retire Early) Calculator
+ */
+export interface FIRETrajectoryPoint {
+  age: number;
+  year: number;
+  netWorth: number;
+  annualExpense: number;
+  status: 'accumulating' | 'financial_independence' | 'retired';
+}
+
+export function calculateFIRE(
+  currentAge: number,
+  retirementAge: number,
+  currentNetWorth: number,
+  monthlyExpenses: number,
+  monthlySavings: number,
+  expectedReturnRate: number,
+  inflationRate: number,
+  safeWithdrawalRate: number = 4
+): {
+  fireNumber: number;
+  leanFireNumber: number;
+  fatFireNumber: number;
+  yearsToRetirement: number;
+  yearsToFire: number;
+  targetMonthlyExpenseAtRetirement: number;
+  trajectory: FIRETrajectoryPoint[];
+  canRetireNow: boolean;
+} {
+  const curAge = Math.max(18, currentAge);
+  const retAge = Math.max(curAge, retirementAge);
+  const yearsToRet = retAge - curAge;
+
+  const annualExpensesCurrent = monthlyExpenses * 12;
+  const infFactor = Math.pow(1 + inflationRate / 100, yearsToRet);
+  const annualExpensesAtRetirement = annualExpensesCurrent * infFactor;
+
+  const swr = safeWithdrawalRate > 0 ? safeWithdrawalRate / 100 : 0.04;
+  const fireNumber = Math.round(annualExpensesAtRetirement / swr);
+  const leanFireNumber = Math.round(fireNumber * 0.75);
+  const fatFireNumber = Math.round(fireNumber * 1.5);
+
+  const canRetireNow = currentNetWorth >= fireNumber;
+
+  // Simulate trajectory till age 85
+  const trajectory: FIRETrajectoryPoint[] = [];
+  let balance = currentNetWorth;
+  const r = expectedReturnRate / 100;
+  const inf = inflationRate / 100;
+  const currentYear = new Date().getFullYear();
+
+  let yearsToFire = -1;
+
+  for (let age = curAge; age <= 85; age++) {
+    const yearOffset = age - curAge;
+    const year = currentYear + yearOffset;
+    const expenseThisYear = annualExpensesCurrent * Math.pow(1 + inf, yearOffset);
+
+    if (balance >= fireNumber && yearsToFire === -1) {
+      yearsToFire = yearOffset;
+    }
+
+    let status: 'accumulating' | 'financial_independence' | 'retired' = 'accumulating';
+    if (age >= retAge) {
+      status = 'retired';
+    } else if (balance >= fireNumber) {
+      status = 'financial_independence';
+    }
+
+    trajectory.push({
+      age,
+      year,
+      netWorth: Math.round(balance),
+      annualExpense: Math.round(expenseThisYear),
+      status,
+    });
+
+    if (age < retAge) {
+      // Accumulation phase: returns on existing corpus + new annual savings
+      const annualSavings = monthlySavings * 12 * Math.pow(1 + inf, yearOffset);
+      balance = balance * (1 + r) + annualSavings;
+    } else {
+      // Decumulation / Retirement phase: returns minus living expenses
+      balance = Math.max(0, balance * (1 + r) - expenseThisYear);
+    }
+  }
+
+  if (yearsToFire === -1) {
+    yearsToFire = Math.max(0, retAge - curAge);
+  }
+
+  return {
+    fireNumber,
+    leanFireNumber,
+    fatFireNumber,
+    yearsToRetirement: yearsToRet,
+    yearsToFire,
+    targetMonthlyExpenseAtRetirement: Math.round(annualExpensesAtRetirement / 12),
+    trajectory,
+    canRetireNow,
+  };
+}

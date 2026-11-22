@@ -2,10 +2,18 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { PieChart, CreditCard, ShieldCheck, Activity, ArrowRight, Sparkles } from 'lucide-react';
+import { PieChart, CreditCard, ShieldCheck, Activity, ArrowRight, Sparkles, Flame } from 'lucide-react';
 
 export default function ToolsCatalogPage() {
   const tools = [
+    {
+      slug: 'fire-simulator',
+      title: 'FIRE & Retirement Runway Simulator',
+      description: 'Simulate your path to Financial Independence & Early Retirement using the 4% rule and inflation compounding.',
+      icon: Flame,
+      href: '/tools/fire-simulator',
+      color: '#f97316',
+    },
     {
       slug: 'budget-planner',
       title: 'Budget Planner Tool',

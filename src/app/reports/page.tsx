@@ -6,6 +6,7 @@ import { formatCurrency, formatPercent, formatDate, formatMonthYear, getCurrentM
 import { LineTrendChart } from '@/components/charts/LineTrendChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { BarComparisonChart } from '@/components/charts/BarComparisonChart';
+import { TaxRegimeComparator } from '@/components/reports/TaxRegimeComparator';
 import {
   FileBarChart2,
   Calendar,
@@ -46,7 +47,7 @@ export default function ReportsPage() {
     recordCurrentSnapshot,
   } = useFinance();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'monthly' | 'health'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'monthly' | 'health' | 'tax'>('overview');
 
   // Month selector for Monthly report
   const currentMonthYear = getCurrentMonthYearString();
@@ -112,8 +113,26 @@ export default function ReportsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
+      {/* Print-Only Executive Header */}
+      <div className="hidden print:block border-b-2 border-slate-900 pb-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
+              WEALTHTRACK — EXECUTIVE FINANCIAL STATEMENT
+            </h1>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Personal Wealth Audit, Solvency Analysis & Algorithmic Health Report
+            </p>
+          </div>
+          <div className="text-right text-xs text-slate-600">
+            <div>Audit Date: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+            <div className="font-bold text-slate-900">Confidential Financial Report</div>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
             Financial Reports & Audits
@@ -136,7 +155,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800/60 rounded-2xl max-w-lg">
+      <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800/60 rounded-2xl max-w-2xl no-print">
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
@@ -169,6 +188,17 @@ export default function ReportsPage() {
           }`}
         >
           Health Score Audit
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('tax')}
+          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeTab === 'tax'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          Tax Optimizer
         </button>
       </div>
 
@@ -622,6 +652,9 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+
+      {/* ----------------- TAB 4: TAX REGIME COMPARATOR (Section 22) ----------------- */}
+      {activeTab === 'tax' && <TaxRegimeComparator />}
     </div>
   );
 }

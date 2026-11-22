@@ -28,9 +28,13 @@ yarn-error.log*
 # Vercel
 .vercel
 
-# TypeScript
 *.tsbuildinfo
 next-env.d.ts
 .env*
 AnkitPortfolio/
-
+BusBite*
+busbite*
+scene_*
+verified_frame_*
+*.mp4
+*.wav

@@ -18,6 +18,7 @@ import { calculateFinancialHealthScore } from '@/lib/calculations';
 import { getCurrentDateString, getCurrentMonthYearString } from '@/lib/formatters';
 import { supabase, hasSupabaseConfig } from '@/lib/supabase/client';
 import {
+  createGuestSession,
   getLocalSessionUser,
   resetLocalPassword,
   signInLocal,
@@ -37,12 +38,13 @@ import {
   signOut,
 } from '@/lib/supabase/repository';
 
-type AuthUser = { id: string; email?: string | null };
+type AuthUser = { id: string; email?: string | null; isGuest?: boolean };
 
 interface FinanceContextType {
   loading: boolean;
   syncError: string | null;
   retrySync: () => Promise<void>;
+  continueAsGuest: () => Promise<boolean>;
   transactions: Transaction[];
   budgets: CategoryBudget[];
   investments: Investment[];
@@ -141,17 +143,23 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         if (hasSupabaseConfig() && supabase) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            activeUser = { id: session.user.id, email: session.user.email ?? null };
+            activeUser = { id: session.user.id, email: session.user.email ?? null, isGuest: false };
           } else {
             const fetched = await getActiveUser();
-            activeUser = fetched ? { id: fetched.id, email: fetched.email ?? null } : null;
+            if (fetched) {
+              activeUser = { id: fetched.id, email: fetched.email ?? null, isGuest: false };
+            } else {
+              const local = getLocalSessionUser();
+              activeUser = local ? { id: local.id, email: local.email ?? null, isGuest: Boolean(local.isGuest) } : null;
+            }
           }
         } else {
           const local = getLocalSessionUser();
-          activeUser = local ? { id: local.id, email: local.email ?? null } : null;
+          activeUser = local ? { id: local.id, email: local.email ?? null, isGuest: Boolean(local.isGuest) } : null;
         }
 
-        const userId = activeUser?.id ?? null;
+        const isUserCloudSync = Boolean(hasSupabaseConfig() && activeUser?.id && !activeUser?.isGuest);
+        const userId = isUserCloudSync ? activeUser!.id : null;
 
         const [
           loadedTx,
@@ -376,6 +384,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     activeGoals: goals.map((g) => ({ currentAmount: g.currentAmount, targetAmount: g.targetAmount })),
   });
 
+  // Cloud sync is only active when Supabase is configured AND the user has a real account session (not guest)
+  const isCloudSync = Boolean(hasSupabaseConfig() && user?.id && !user?.isGuest);
+
   // Snapshot recording
   const recordCurrentSnapshot = useCallback(async () => {
     const snapshot: MonthlySnapshot = {
@@ -393,7 +404,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       timestamp: Date.now(),
     };
 
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<MonthlySnapshot & { user_id: string }>('snapshots', { ...snapshot, user_id: user.id }, user.id);
       setSnapshots((prev) => {
         const index = prev.findIndex((s) => s.id === saved.id || s.monthYear === saved.monthYear);
@@ -410,7 +421,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveSnapshot(snapshot);
     const updated = await db.getSnapshots();
     setSnapshots(updated);
-  }, [currentMonthYear, netWorth, totalAssets, totalLiabilities, totalInvested, totalInvestmentValue, totalLoansOutstanding, monthlyIncome, monthlyExpenses, monthlySavings, user?.id]);
+  }, [currentMonthYear, netWorth, totalAssets, totalLiabilities, totalInvested, totalInvestmentValue, totalLoansOutstanding, monthlyIncome, monthlyExpenses, monthlySavings, user?.id, isCloudSync]);
 
   // ---------------- CRUD HANDLERS ----------------
   const addTransaction = async (txData: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -422,7 +433,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       updatedAt: now,
     };
 
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Transaction & { user_id: string }>('transactions', { ...newTx, user_id: user.id }, user.id);
       setTransactions((prev) => [saved, ...prev]);
       return saved;
@@ -435,7 +446,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editTransaction = async (tx: Transaction) => {
     const updated: Transaction = { ...tx, updatedAt: Date.now() };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Transaction & { user_id: string }>('transactions', { ...updated, user_id: user.id }, user.id);
       setTransactions((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
       return saved;
@@ -446,7 +457,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeTransaction = async (id: string) => {
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       await deleteRecord('transactions', id, user.id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
       return;
@@ -464,7 +475,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       monthlyLimit,
       spent: 0,
     };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<CategoryBudget & { user_id: string }>('budgets', { ...budget, user_id: user.id }, user.id);
       setBudgets((prev) => {
         const idx = prev.findIndex((b) => b.category.toLowerCase() === category.toLowerCase());
@@ -497,7 +508,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       lastUpdatedAt: getCurrentDateString(),
       createdAt: now,
     };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Investment & { user_id: string }>('investments', { ...newInv, user_id: user.id }, user.id);
       setInvestments((prev) => [saved, ...prev]);
       return saved;
@@ -509,7 +520,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editInvestment = async (inv: Investment) => {
     const updated: Investment = { ...inv, lastUpdatedAt: getCurrentDateString() };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Investment & { user_id: string }>('investments', { ...updated, user_id: user.id }, user.id);
       setInvestments((prev) => prev.map((i) => (i.id === saved.id ? saved : i)));
       return saved;
@@ -527,7 +538,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       currentValue,
       lastUpdatedAt: getCurrentDateString(),
     };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       await upsertRecord<Investment & { user_id: string }>('investments', { ...updated, user_id: user.id }, user.id);
       setInvestments((prev) => prev.map((i) => (i.id === id ? updated : i)));
       return;
@@ -537,7 +548,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeInvestment = async (id: string) => {
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       await deleteRecord('investments', id, user.id);
       setInvestments((prev) => prev.filter((i) => i.id !== id));
       return;
@@ -554,7 +565,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
       updatedAt: now,
     };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Goal & { user_id: string }>('goals', { ...newGoal, user_id: user.id }, user.id);
       setGoals((prev) => [saved, ...prev]);
       return saved;
@@ -566,7 +577,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editGoal = async (goal: Goal) => {
     const updated: Goal = { ...goal, updatedAt: Date.now() };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Goal & { user_id: string }>('goals', { ...updated, user_id: user.id }, user.id);
       setGoals((prev) => prev.map((g) => (g.id === saved.id ? saved : g)));
       return saved;
@@ -584,7 +595,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       currentAmount: Math.min(target.targetAmount, target.currentAmount + amount),
       updatedAt: Date.now(),
     };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Goal & { user_id: string }>('goals', { ...updated, user_id: user.id }, user.id);
       setGoals((prev) => prev.map((g) => (g.id === id ? saved : g)));
       return;
@@ -594,7 +605,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeGoal = async (id: string) => {
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       await deleteRecord('goals', id, user.id);
       setGoals((prev) => prev.filter((g) => g.id !== id));
       return;
@@ -611,7 +622,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
       updatedAt: now,
     };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Loan & { user_id: string }>('loans', { ...newLoan, user_id: user.id }, user.id);
       setLoans((prev) => [saved, ...prev]);
       return saved;
@@ -623,7 +634,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editLoan = async (loan: Loan) => {
     const updated: Loan = { ...loan, updatedAt: Date.now() };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Loan & { user_id: string }>('loans', { ...updated, user_id: user.id }, user.id);
       setLoans((prev) => prev.map((l) => (l.id === saved.id ? saved : l)));
       return saved;
@@ -648,7 +659,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       emisRemaining: newRemaining,
       updatedAt: Date.now(),
     };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Loan & { user_id: string }>('loans', { ...updated, user_id: user.id }, user.id);
       setLoans((prev) => prev.map((l) => (l.id === id ? saved : l)));
       return;
@@ -658,7 +669,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeLoan = async (id: string) => {
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       await deleteRecord('loans', id, user.id);
       setLoans((prev) => prev.filter((l) => l.id !== id));
       return;
@@ -676,7 +687,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
     };
 
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Asset & { user_id: string }>('assets', { ...newAsset, user_id: user.id }, user.id);
       setAssets((prev) => [saved, ...prev]);
       return saved;
@@ -689,7 +700,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editAsset = async (asset: Asset) => {
     const updated: Asset = { ...asset, lastUpdatedAt: getCurrentDateString() };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Asset & { user_id: string }>('assets', { ...updated, user_id: user.id }, user.id);
       setAssets((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
       return saved;
@@ -700,7 +711,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeAsset = async (id: string) => {
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       await deleteRecord('assets', id, user.id);
       setAssets((prev) => prev.filter((a) => a.id !== id));
       return;
@@ -718,7 +729,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
     };
 
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Liability & { user_id: string }>('liabilities', { ...newLiab, user_id: user.id }, user.id);
       setLiabilities((prev) => [saved, ...prev]);
       return saved;
@@ -731,7 +742,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const editLiability = async (liability: Liability) => {
     const updated: Liability = { ...liability, lastUpdatedAt: getCurrentDateString() };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Liability & { user_id: string }>('liabilities', { ...updated, user_id: user.id }, user.id);
       setLiabilities((prev) => prev.map((l) => (l.id === saved.id ? saved : l)));
       return saved;
@@ -742,7 +753,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeLiability = async (id: string) => {
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       await deleteRecord('liabilities', id, user.id);
       setLiabilities((prev) => prev.filter((l) => l.id !== id));
       return;
@@ -753,7 +764,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     const updated: UserSettings = { ...settings, ...newSettings };
-    if (hasSupabaseConfig() && user?.id) {
+    if (isCloudSync && user?.id) {
       await upsertRecord<{ key: string; value: UserSettings; user_id: string }>('app_settings', {
         key: 'app_settings',
         value: updated,
@@ -853,23 +864,19 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await refreshData();
   };
 
-  const signOutUser = async () => {
-    if (!hasSupabaseConfig()) {
-      signOutLocal();
-      setUser(null);
-      setTransactions([]);
-      setBudgets([]);
-      setInvestments([]);
-      setGoals([]);
-      setLoans([]);
-      setAssets([]);
-      setLiabilities([]);
-      setSnapshots([]);
-      await refreshData();
-      return;
-    }
+  const continueAsGuest = async (): Promise<boolean> => {
+    const guest = createGuestSession();
+    const normalized: AuthUser = { id: guest.id, email: guest.email, isGuest: true };
+    setUser(normalized);
+    await refreshData();
+    return true;
+  };
 
-    await signOut();
+  const signOutUser = async () => {
+    signOutLocal();
+    if (hasSupabaseConfig() && supabase) {
+      await signOut().catch(() => {});
+    }
     setUser(null);
     setTransactions([]);
     setBudgets([]);
@@ -888,6 +895,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         loading,
         syncError,
         retrySync,
+        continueAsGuest,
         transactions,
         budgets,
         investments,

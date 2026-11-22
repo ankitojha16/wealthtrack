@@ -118,20 +118,43 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickAdd }) => {
           </button>
 
           {user ? (
-            <div className="flex items-center gap-1.5">
-              <span className="hidden md:inline text-[11px] font-semibold text-slate-500 dark:text-slate-400 max-w-[140px] truncate" title={user.email ?? ''}>
-                {user.email ?? 'Account'}
-              </span>
-              <button
-                type="button"
-                onClick={() => signOutUser()}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                title="Sign out"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
+            user.isGuest ? (
+              <div className="flex items-center gap-1.5">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900 text-[10px] font-bold">
+                  Guest
+                </span>
+                <Link
+                  href="/auth"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-sky-200 dark:border-sky-900/60 bg-sky-50 dark:bg-sky-950/40 text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Sign In</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => signOutUser()}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                  title="Exit Guest Session"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="hidden md:inline text-[11px] font-semibold text-slate-500 dark:text-slate-400 max-w-[140px] truncate" title={user.email ?? ''}>
+                  {user.email ?? 'Account'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => signOutUser()}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              </div>
+            )
           ) : (
             <Link
               href="/auth"

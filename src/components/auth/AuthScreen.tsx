@@ -13,16 +13,29 @@ export function AuthScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectDestination = sanitizeRedirectUrl(searchParams?.get('redirect'));
-  const { signInWithEmail, signUpWithEmail, resetPasswordForEmail, settings } = useFinance();
+  const { signInWithEmail, signUpWithEmail, resetPasswordForEmail, continueAsGuest, settings } = useFinance();
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGuestEntering, setIsGuestEntering] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const handleContinueAsGuest = async () => {
+    setIsGuestEntering(true);
+    try {
+      await continueAsGuest();
+      router.push(redirectDestination);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to start guest session.');
+    } finally {
+      setIsGuestEntering(false);
+    }
+  };
 
   const isAuthCoolingDown = cooldownUntil !== null && Date.now() < cooldownUntil;
 
@@ -298,6 +311,23 @@ export function AuthScreen() {
                       ? 'Create account'
                       : 'Send Verified Reset Link'}
               <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <div className="relative my-4 flex items-center justify-center">
+              <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+              <span className="absolute bg-white dark:bg-slate-900 px-3 text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                Or
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleContinueAsGuest}
+              disabled={isSubmitting || isGuestEntering}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-sky-500" />
+              <span>{isGuestEntering ? 'Entering demo...' : 'Continue as Guest / Try Demo (Offline Mode)'}</span>
             </button>
           </form>
 

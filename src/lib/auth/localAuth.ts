@@ -130,6 +130,29 @@ export function resetLocalPassword(email: string, _favoriteFruit: string, newPas
   return true;
 }
 
+/**
+ * Creates an instantaneous offline guest session.
+ * Stores zero credentials/passwords and provisions a local session for product trial.
+ */
+export function createGuestSession(): LocalAuthUser {
+  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? `guest_${crypto.randomUUID().slice(0, 8)}`
+    : `guest_${Date.now()}`;
+
+  const sessionUser: LocalAuthUser = {
+    id,
+    email: 'guest@wealthtrack.local',
+    isGuest: true,
+  };
+
+  const storage = getStorage();
+  if (storage) {
+    storage.setItem(LOCAL_SESSION_KEY, JSON.stringify(sessionUser));
+  }
+
+  return sessionUser;
+}
+
 export function signInLocal(email: string, password: string): LocalAuthUser | null {
   if (!email || !password || password.length < 8) return null;
 

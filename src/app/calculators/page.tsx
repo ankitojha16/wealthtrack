@@ -10,18 +10,14 @@ export default function CalculatorsCatalogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   const categories = ['All', 'Investment', 'Savings', 'General Finance', 'Loan & Debt'];
-  const featuredSlugs = new Set(['inflation', 'swp', 'sip', 'lumpsum', 'fd', 'rd']);
+  const featuredSlugs = new Set(['sip', 'lumpsum', 'emi', 'swp', 'cagr', 'fd', 'rd', 'ppf', 'inflation']);
 
-  const visibleCalculatorSlugs = new Set(['inflation', 'swp', 'sip', 'lumpsum', 'fd', 'rd']);
-
-  const orderedCalculators = [...CALCULATORS]
-    .filter((calc) => visibleCalculatorSlugs.has(calc.slug))
-    .sort((a, b) => {
-      const aPriority = featuredSlugs.has(a.slug) ? 0 : 1;
-      const bPriority = featuredSlugs.has(b.slug) ? 0 : 1;
-      if (aPriority !== bPriority) return aPriority - bPriority;
-      return a.title.localeCompare(b.title);
-    });
+  const orderedCalculators = [...CALCULATORS].sort((a, b) => {
+    const aPriority = featuredSlugs.has(a.slug) ? 0 : 1;
+    const bPriority = featuredSlugs.has(b.slug) ? 0 : 1;
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    return a.title.localeCompare(b.title);
+  });
 
   const filteredCalculators = orderedCalculators.filter((calc) => {
     const matchCategory = selectedCategory === 'All' || calc.category === selectedCategory;
@@ -40,14 +36,13 @@ export default function CalculatorsCatalogPage() {
       <div className="text-center max-w-2xl mx-auto space-y-3">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-xs font-bold text-sky-600 dark:text-sky-400">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Core WealthTools</span>
+          <span>Core WealthTools • 20 Calculators</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-          Essential Money Calculators
+          Financial & Investment Calculators
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-          Quick calculations for SIPs, lumpsum investing, fixed deposits, recurring deposits, and inflation planning.
-          Less clutter, more clarity.
+          Comprehensive suite of 20 calculators for SIPs, lumpsum investing, EMIs, loan prepayment, CAGR, XIRR, fixed deposits, inflation, and retirement planning.
         </p>
       </div>
 

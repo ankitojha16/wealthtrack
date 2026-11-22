@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useFinance } from '@/lib/context/FinanceContext';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/formatters';
 import { LoanModal } from '@/components/loans/LoanModal';
+import { LoanAmortizationModal } from '@/components/loans/LoanAmortizationModal';
 import { Loan } from '@/types';
 import {
   CreditCard,
@@ -16,6 +17,7 @@ import {
   Trash2,
   TrendingDown,
   ShieldAlert,
+  Calculator,
 } from 'lucide-react';
 
 export default function LoansPage() {
@@ -32,6 +34,7 @@ export default function LoansPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
+  const [amortizationLoan, setAmortizationLoan] = useState<Loan | null>(null);
 
   // Aggregate metrics
   const totalEmisRemainingCount = loans.reduce((sum, l) => sum + l.emisRemaining, 0);
@@ -253,6 +256,16 @@ export default function LoansPage() {
                     <span>Next: Active</span>
                   )}
                 </div>
+
+                {/* Amortization & Prepayment Simulator Trigger */}
+                <button
+                  type="button"
+                  onClick={() => setAmortizationLoan(loan)}
+                  className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Calculator className="w-3.5 h-3.5" />
+                  <span>Amortization & Prepayment</span>
+                </button>
               </div>
             );
           })}
@@ -274,6 +287,13 @@ export default function LoansPage() {
             await addLoan(data);
           }
         }}
+      />
+
+      {/* Loan Amortization & Prepayment Modal */}
+      <LoanAmortizationModal
+        isOpen={Boolean(amortizationLoan)}
+        onClose={() => setAmortizationLoan(null)}
+        loan={amortizationLoan}
       />
     </div>
   );

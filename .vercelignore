@@ -6,3 +6,9 @@ supabase
 .github
 .next
 node_modules
+*.mp4
+*.wav
+BusBite*
+busbite*
+scene_*
+verified_frame_*

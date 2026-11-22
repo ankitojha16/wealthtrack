@@ -21,6 +21,17 @@ export function formatIndianNumber(num: number): string {
   return (isNegative ? '-' : '') + formattedOther + ',' + lastThree + decimalPart;
 }
 
+let globalCurrencySymbol = '₹';
+let globalNumberFormat: 'indian' | 'international' = 'indian';
+
+/**
+ * Configure global defaults for currency formatting based on active user settings
+ */
+export function setDefaultCurrencySettings(symbol?: string, format?: 'indian' | 'international') {
+  if (symbol) globalCurrencySymbol = symbol;
+  if (format) globalNumberFormat = format;
+}
+
 /**
  * Format currency with symbol and system preference
  */
@@ -33,8 +44,8 @@ export function formatCurrency(
     compact?: boolean;
   } = {}
 ): string {
-  const symbol = options.symbol ?? '₹';
-  const format = options.format ?? 'indian';
+  const symbol = options.symbol ?? globalCurrencySymbol;
+  const format = options.format ?? globalNumberFormat;
   const decimals = options.decimals ?? 0;
   const compact = options.compact ?? false;
 

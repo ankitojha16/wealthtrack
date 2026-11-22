@@ -15,7 +15,7 @@ import {
 } from '@/types';
 import * as db from '@/lib/db';
 import { calculateFinancialHealthScore } from '@/lib/calculations';
-import { getCurrentDateString, getCurrentMonthYearString } from '@/lib/formatters';
+import { getCurrentDateString, getCurrentMonthYearString, setDefaultCurrencySettings } from '@/lib/formatters';
 import { supabase, hasSupabaseConfig } from '@/lib/supabase/client';
 import {
   createGuestSession,
@@ -74,6 +74,7 @@ interface FinanceContextType {
 
   // CRUD actions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Transaction>;
+  addTransactionsBulk: (txList: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>[]) => Promise<Transaction[]>;
   editTransaction: (tx: Transaction) => Promise<Transaction>;
   removeTransaction: (id: string) => Promise<void>;
 
@@ -130,6 +131,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const refreshingPromiseRef = React.useRef<Promise<void> | null>(null);
   const lastLoadedUserIdRef = React.useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (settings?.currencySymbol || settings?.numberFormat) {
+      setDefaultCurrencySettings(settings.currencySymbol, settings.numberFormat);
+    }
+  }, [settings?.currencySymbol, settings?.numberFormat]);
 
   const refreshData = useCallback(async () => {
     if (refreshingPromiseRef.current) {
@@ -442,6 +449,33 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveTransaction(newTx);
     setTransactions((prev) => [newTx, ...prev]);
     return newTx;
+  };
+
+  const addTransactionsBulk = async (txList: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<Transaction[]> => {
+    if (!txList.length) return [];
+    const now = Date.now();
+    const createdList: Transaction[] = txList.map((txData, idx) => ({
+      ...txData,
+      id: `tx_${now}_${idx}_${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: now + idx,
+      updatedAt: now + idx,
+    }));
+
+    if (isCloudSync && user?.id) {
+      const results: Transaction[] = [];
+      for (const item of createdList) {
+        const saved = await upsertRecord<Transaction & { user_id: string }>('transactions', { ...item, user_id: user.id }, user.id);
+        results.push(saved);
+      }
+      setTransactions((prev) => [...results, ...prev]);
+      return results;
+    }
+
+    for (const item of createdList) {
+      await db.saveTransaction(item);
+    }
+    setTransactions((prev) => [...createdList, ...prev]);
+    return createdList;
   };
 
   const editTransaction = async (tx: Transaction) => {
@@ -921,6 +955,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         monthlySavings,
         financialHealth,
         addTransaction,
+        addTransactionsBulk,
         editTransaction,
         removeTransaction,
         saveCategoryBudget,

@@ -7,6 +7,9 @@ import { DEFAULT_EXPENSE_CATEGORIES } from '@/lib/data/categories';
 import { TransactionModal } from '@/components/budget/TransactionModal';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { Transaction } from '@/types';
+import { Modal } from '@/components/common/Modal';
+import { exportTransactionsCSV } from '@/lib/export-import';
+import { CSVImportModal } from '@/components/budget/CSVImportModal';
 import {
   PieChart,
   Plus,
@@ -21,9 +24,8 @@ import {
   SlidersHorizontal,
   Calendar,
   Download,
+  UploadCloud,
 } from 'lucide-react';
-import { Modal } from '@/components/common/Modal';
-import { exportTransactionsCSV } from '@/lib/export-import';
 
 export default function BudgetPage() {
   const {
@@ -48,6 +50,7 @@ export default function BudgetPage() {
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
 
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [txDefaultType, setTxDefaultType] = useState<'expense' | 'income'>('expense');
 
@@ -176,6 +179,15 @@ export default function BudgetPage() {
               ))}
             </select>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsCSVModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-xs transition-all"
+          >
+            <UploadCloud className="w-3.5 h-3.5 text-sky-500" />
+            <span>Import CSV</span>
+          </button>
 
           <button
             type="button"
@@ -610,6 +622,12 @@ export default function BudgetPage() {
           </div>
         </form>
       </Modal>
+
+      {/* CSV Import Modal */}
+      <CSVImportModal
+        isOpen={isCSVModalOpen}
+        onClose={() => setIsCSVModalOpen(false)}
+      />
     </div>
   );
 }

@@ -198,6 +198,88 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Currency & Number Format */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <Coins className="w-3.5 h-3.5 text-amber-500" />
+              Primary Currency
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { code: 'INR', symbol: '₹', label: 'INR (₹)' },
+                { code: 'USD', symbol: '$', label: 'USD ($)' },
+                { code: 'EUR', symbol: '€', label: 'EUR (€)' },
+                { code: 'GBP', symbol: '£', label: 'GBP (£)' },
+                { code: 'AED', symbol: 'د.إ', label: 'AED (د.إ)' },
+                { code: 'CAD', symbol: 'C$', label: 'CAD (C$)' },
+                { code: 'AUD', symbol: 'A$', label: 'AUD (A$)' },
+                { code: 'SGD', symbol: 'S$', label: 'SGD (S$)' },
+                { code: 'JPY', symbol: '¥', label: 'JPY (¥)' },
+              ].map((curr) => {
+                const isSelected = (settings.currencySymbol === curr.symbol) || (settings.currency === curr.code);
+                return (
+                  <button
+                    key={curr.code}
+                    type="button"
+                    onClick={() => updateSettings({ currency: curr.code, currencySymbol: curr.symbol })}
+                    className={`py-2 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all ${
+                      isSelected
+                        ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-300 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <span>{curr.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Number & Scale System
+            </label>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => updateSettings({ numberFormat: 'indian' })}
+                className={`w-full p-2.5 rounded-xl border text-left text-xs font-medium transition-all ${
+                  settings.numberFormat === 'indian'
+                    ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-200 shadow-xs'
+                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <div className="font-bold flex items-center justify-between">
+                  <span>Indian System (Lakhs & Crores)</span>
+                  {settings.numberFormat === 'indian' && <span className="text-[10px] bg-sky-500 text-white px-1.5 py-0.5 rounded-md font-bold">Active</span>}
+                </div>
+                <div className="text-[11px] opacity-75 mt-0.5">
+                  e.g., {settings.currencySymbol || '₹'}10,00,000 (10 Lakhs) • {settings.currencySymbol || '₹'}1,50,000
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateSettings({ numberFormat: 'international' })}
+                className={`w-full p-2.5 rounded-xl border text-left text-xs font-medium transition-all ${
+                  settings.numberFormat === 'international'
+                    ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-200 shadow-xs'
+                    : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <div className="font-bold flex items-center justify-between">
+                  <span>International System (Millions & Billions)</span>
+                  {settings.numberFormat === 'international' && <span className="text-[10px] bg-sky-500 text-white px-1.5 py-0.5 rounded-md font-bold">Active</span>}
+                </div>
+                <div className="text-[11px] opacity-75 mt-0.5">
+                  e.g., {settings.currencySymbol || '$'}1,000,000 (1 Million) • {settings.currencySymbol || '$'}150,000
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Data Backup & Export Section */}

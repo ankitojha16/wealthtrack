@@ -5,6 +5,7 @@ import { useFinance } from '@/lib/context/FinanceContext';
 import { OverviewCards } from '@/components/dashboard/OverviewCards';
 import { FinancialHealthCard } from '@/components/dashboard/FinancialHealthCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { LineTrendChart } from '@/components/charts/LineTrendChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { BarComparisonChart } from '@/components/charts/BarComparisonChart';
@@ -213,6 +214,9 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Getting Started Onboarding Checklist */}
+      <OnboardingChecklist onOpenModal={(type) => setModalState({ type })} />
 
       {/* 4 Financial Overview Cards */}
       <OverviewCards />

@@ -92,6 +92,13 @@ export function exportLoansCSV(loans: Loan[]) {
   downloadFile(csv, `wealthtrack-loans-${dateStr}.csv`, 'text/csv');
 }
 
+export {
+  parseCSVLine,
+  standardizeDate,
+  parseTransactionsCSV,
+  type CSVParseResult,
+} from './csv-parser';
+
 /**
  * Read and validate uploaded JSON backup file
  */
@@ -114,3 +121,4 @@ export function readUploadedJSON(file: File): Promise<ExportPayload> {
     reader.readAsText(file);
   });
 }
+

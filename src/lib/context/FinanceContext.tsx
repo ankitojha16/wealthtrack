@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Transaction,
   CategoryBudget,
@@ -337,61 +337,104 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   // Current Month calculations
   const currentMonthYear = getCurrentMonthYearString(); // e.g. "2026-09"
-  const currentMonthTransactions = transactions.filter((t) => t.date.startsWith(currentMonthYear));
 
-  const monthlyIncome = currentMonthTransactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
-
-  const monthlyExpenses = currentMonthTransactions
-    .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + (t.amount || 0), 0);
+  const { monthlyIncome, monthlyExpenses, monthlySavings } = useMemo(() => {
+    let income = 0;
+    let expenses = 0;
+    for (const t of transactions) {
+      if (t.date.startsWith(currentMonthYear)) {
+        if (t.type === 'income') income += t.amount || 0;
+        else if (t.type === 'expense') expenses += t.amount || 0;
+      }
+    }
+    return {
+      monthlyIncome: income,
+      monthlyExpenses: expenses,
+      monthlySavings: income - expenses,
+    };
+  }, [transactions, currentMonthYear]);
 
   // Investments calculations
-  const totalInvested = investments.reduce((sum, i) => sum + (i.investedAmount || 0), 0);
-  const totalInvestmentValue = investments.reduce((sum, i) => sum + (i.currentValue || 0), 0);
-  const totalInvestmentGain = totalInvestmentValue - totalInvested;
-  const investmentReturnPercent = totalInvested > 0 ? (totalInvestmentGain / totalInvested) * 100 : 0;
+  const { totalInvested, totalInvestmentValue, totalInvestmentGain, investmentReturnPercent } = useMemo(() => {
+    let invested = 0;
+    let currVal = 0;
+    for (const i of investments) {
+      invested += i.investedAmount || 0;
+      currVal += i.currentValue || 0;
+    }
+    const gain = currVal - invested;
+    const returnPct = invested > 0 ? (gain / invested) * 100 : 0;
+    return {
+      totalInvested: invested,
+      totalInvestmentValue: currVal,
+      totalInvestmentGain: gain,
+      investmentReturnPercent: returnPct,
+    };
+  }, [investments]);
 
   // Loans calculations
-  const totalLoansOutstanding = loans.reduce((sum, l) => sum + (l.outstandingAmount || 0), 0);
-  const totalMonthlyEmi = loans.reduce((sum, l) => sum + (l.monthlyEmi || 0), 0);
+  const { totalLoansOutstanding, totalMonthlyEmi } = useMemo(() => {
+    let outstanding = 0;
+    let emi = 0;
+    for (const l of loans) {
+      outstanding += l.outstandingAmount || 0;
+      emi += l.monthlyEmi || 0;
+    }
+    return {
+      totalLoansOutstanding: outstanding,
+      totalMonthlyEmi: emi,
+    };
+  }, [loans]);
 
   // Assets & Liabilities calculations
-  const explicitAssetsValue = assets.reduce((sum, a) => sum + (a.estimatedValue || 0), 0);
-  // Total assets = Explicit assets + user-entered investment current values
-  const totalAssets = explicitAssetsValue + totalInvestmentValue;
+  const { totalAssets, totalLiabilities, netWorth, liquidAssets } = useMemo(() => {
+    let explicitAssets = 0;
+    let liquid = 0;
+    for (const a of assets) {
+      explicitAssets += a.estimatedValue || 0;
+      if (
+        a.category === 'Financial' &&
+        ['Bank', 'Cash', 'Savings'].some(
+          (k) => a.name.toLowerCase().includes(k.toLowerCase()) || a.subcategory.toLowerCase().includes(k.toLowerCase())
+        )
+      ) {
+        liquid += a.estimatedValue || 0;
+      }
+    }
+    for (const i of investments) {
+      if (['Cash', 'FD', 'RD', 'Fixed Deposit', 'Recurring Deposit', 'Fixed Deposit (FD)', 'Recurring Deposit (RD)'].includes(i.type)) {
+        liquid += i.currentValue || 0;
+      }
+    }
 
-  const explicitLiabilitiesValue = liabilities.reduce((sum, l) => sum + (l.amount || 0), 0);
-  // Total liabilities = Explicit non-loan liabilities + total outstanding loans
-  const totalLiabilities = explicitLiabilitiesValue + totalLoansOutstanding;
+    let explicitLiabilities = 0;
+    for (const l of liabilities) {
+      explicitLiabilities += l.amount || 0;
+    }
 
-  // Net Worth
-  const netWorth = totalAssets - totalLiabilities;
-
-  // Monthly Savings
-  const monthlySavings = monthlyIncome - monthlyExpenses;
-
-  // Liquid assets for emergency fund: Bank/Cash assets + Liquid investments (Cash, FD, RD)
-  const liquidAssets =
-    assets
-      .filter((a) => a.category === 'Financial' && ['Bank', 'Cash', 'Savings'].some((k) => a.name.toLowerCase().includes(k.toLowerCase()) || a.subcategory.toLowerCase().includes(k.toLowerCase())))
-      .reduce((sum, a) => sum + a.estimatedValue, 0) +
-    investments
-      .filter((i) => ['Cash', 'FD', 'RD', 'Fixed Deposit', 'Recurring Deposit', 'Fixed Deposit (FD)', 'Recurring Deposit (RD)'].includes(i.type))
-      .reduce((sum, i) => sum + i.currentValue, 0);
+    const tAssets = explicitAssets + totalInvestmentValue;
+    const tLiabilities = explicitLiabilities + totalLoansOutstanding;
+    return {
+      totalAssets: tAssets,
+      totalLiabilities: tLiabilities,
+      netWorth: tAssets - tLiabilities,
+      liquidAssets: liquid,
+    };
+  }, [assets, investments, liabilities, totalInvestmentValue, totalLoansOutstanding]);
 
   // Financial Health Score
-  const financialHealth = calculateFinancialHealthScore({
-    monthlyIncome,
-    monthlyExpenses,
-    totalMonthlyEmi,
-    liquidAssets: liquidAssets > 0 ? liquidAssets : totalAssets * 0.2, // fallback approximation if not categorized
-    totalAssets,
-    totalLiabilities,
-    totalInvestments: totalInvestmentValue,
-    activeGoals: goals.map((g) => ({ currentAmount: g.currentAmount, targetAmount: g.targetAmount })),
-  });
+  const financialHealth = useMemo(() => {
+    return calculateFinancialHealthScore({
+      monthlyIncome,
+      monthlyExpenses,
+      totalMonthlyEmi,
+      liquidAssets: liquidAssets > 0 ? liquidAssets : totalAssets * 0.2, // fallback approximation if not categorized
+      totalAssets,
+      totalLiabilities,
+      totalInvestments: totalInvestmentValue,
+      activeGoals: goals.map((g) => ({ currentAmount: g.currentAmount, targetAmount: g.targetAmount })),
+    });
+  }, [monthlyIncome, monthlyExpenses, totalMonthlyEmi, liquidAssets, totalAssets, totalLiabilities, totalInvestmentValue, goals]);
 
   // Cloud sync is only active when Supabase is configured AND the user has a real account session (not guest)
   const isCloudSync = Boolean(hasSupabaseConfig() && user?.id && !user?.isGuest);
@@ -433,7 +476,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [currentMonthYear, netWorth, totalAssets, totalLiabilities, totalInvested, totalInvestmentValue, totalLoansOutstanding, monthlyIncome, monthlyExpenses, monthlySavings, user?.id, isCloudSync]);
 
   // ---------------- CRUD HANDLERS ----------------
-  const addTransaction = async (txData: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addTransaction = useCallback(async (txData: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = Date.now();
     const newTx: Transaction = {
       ...txData,
@@ -451,9 +494,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveTransaction(newTx);
     setTransactions((prev) => [newTx, ...prev]);
     return newTx;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const addTransactionsBulk = async (txList: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<Transaction[]> => {
+  const addTransactionsBulk = useCallback(async (txList: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<Transaction[]> => {
     if (!txList.length) return [];
     const now = Date.now();
     const createdList: Transaction[] = txList.map((txData, idx) => ({
@@ -478,9 +521,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     setTransactions((prev) => [...createdList, ...prev]);
     return createdList;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const editTransaction = async (tx: Transaction) => {
+  const editTransaction = useCallback(async (tx: Transaction) => {
     const updated: Transaction = { ...tx, updatedAt: Date.now() };
     if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Transaction & { user_id: string }>('transactions', { ...updated, user_id: user.id }, user.id);
@@ -490,9 +533,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveTransaction(updated);
     setTransactions((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     return updated;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const removeTransaction = async (id: string) => {
+  const removeTransaction = useCallback(async (id: string) => {
     if (isCloudSync && user?.id) {
       await deleteRecord('transactions', id, user.id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
@@ -500,9 +543,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.deleteTransaction(id);
     setTransactions((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, [isCloudSync, user?.id]);
 
-  const saveCategoryBudget = async (category: string, monthlyLimit: number) => {
+  const saveCategoryBudget = useCallback(async (category: string, monthlyLimit: number) => {
     const safeKey = category.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
     const budgetId = user?.id ? `b_${user.id}_${safeKey}` : `b_local_${safeKey}`;
     const budget: CategoryBudget = {
@@ -534,9 +577,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, budget];
     });
-  };
+  }, [isCloudSync, user?.id]);
 
-  const addInvestment = async (invData: Omit<Investment, 'id' | 'createdAt' | 'lastUpdatedAt'>) => {
+  const addInvestment = useCallback(async (invData: Omit<Investment, 'id' | 'createdAt' | 'lastUpdatedAt'>) => {
     const now = Date.now();
     const newInv: Investment = {
       ...invData,
@@ -552,9 +595,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveInvestment(newInv);
     setInvestments((prev) => [newInv, ...prev]);
     return newInv;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const editInvestment = async (inv: Investment) => {
+  const editInvestment = useCallback(async (inv: Investment) => {
     const updated: Investment = { ...inv, lastUpdatedAt: getCurrentDateString() };
     if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Investment & { user_id: string }>('investments', { ...updated, user_id: user.id }, user.id);
@@ -564,9 +607,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveInvestment(updated);
     setInvestments((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
     return updated;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const updateInvestmentCurrentValue = async (id: string, currentValue: number) => {
+  const updateInvestmentCurrentValue = useCallback(async (id: string, currentValue: number) => {
     const target = investments.find((i) => i.id === id);
     if (!target) return;
     const updated: Investment = {
@@ -581,9 +624,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.saveInvestment(updated);
     setInvestments((prev) => prev.map((i) => (i.id === id ? updated : i)));
-  };
+  }, [investments, isCloudSync, user?.id]);
 
-  const removeInvestment = async (id: string) => {
+  const removeInvestment = useCallback(async (id: string) => {
     if (isCloudSync && user?.id) {
       await deleteRecord('investments', id, user.id);
       setInvestments((prev) => prev.filter((i) => i.id !== id));
@@ -591,9 +634,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.deleteInvestment(id);
     setInvestments((prev) => prev.filter((i) => i.id !== id));
-  };
+  }, [isCloudSync, user?.id]);
 
-  const addGoal = async (goalData: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addGoal = useCallback(async (goalData: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = Date.now();
     const newGoal: Goal = {
       ...goalData,
@@ -609,9 +652,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveGoal(newGoal);
     setGoals((prev) => [newGoal, ...prev]);
     return newGoal;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const editGoal = async (goal: Goal) => {
+  const editGoal = useCallback(async (goal: Goal) => {
     const updated: Goal = { ...goal, updatedAt: Date.now() };
     if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Goal & { user_id: string }>('goals', { ...updated, user_id: user.id }, user.id);
@@ -621,9 +664,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveGoal(updated);
     setGoals((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
     return updated;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const contributeToGoal = async (id: string, amount: number) => {
+  const contributeToGoal = useCallback(async (id: string, amount: number) => {
     const target = goals.find((g) => g.id === id);
     if (!target) return;
     const updated: Goal = {
@@ -638,9 +681,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.saveGoal(updated);
     setGoals((prev) => prev.map((g) => (g.id === id ? updated : g)));
-  };
+  }, [goals, isCloudSync, user?.id]);
 
-  const removeGoal = async (id: string) => {
+  const removeGoal = useCallback(async (id: string) => {
     if (isCloudSync && user?.id) {
       await deleteRecord('goals', id, user.id);
       setGoals((prev) => prev.filter((g) => g.id !== id));
@@ -648,9 +691,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.deleteGoal(id);
     setGoals((prev) => prev.filter((g) => g.id !== id));
-  };
+  }, [isCloudSync, user?.id]);
 
-  const addLoan = async (loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addLoan = useCallback(async (loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = Date.now();
     const newLoan: Loan = {
       ...loanData,
@@ -666,9 +709,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveLoan(newLoan);
     setLoans((prev) => [newLoan, ...prev]);
     return newLoan;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const editLoan = async (loan: Loan) => {
+  const editLoan = useCallback(async (loan: Loan) => {
     const updated: Loan = { ...loan, updatedAt: Date.now() };
     if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Loan & { user_id: string }>('loans', { ...updated, user_id: user.id }, user.id);
@@ -678,9 +721,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveLoan(updated);
     setLoans((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
     return updated;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const payLoanEmi = async (id: string) => {
+  const payLoanEmi = useCallback(async (id: string) => {
     const target = loans.find((l) => l.id === id);
     if (!target || target.outstandingAmount <= 0 || target.emisRemaining <= 0) return;
     const monthlyRate = (target.interestRate ?? 0) / (12 * 100);
@@ -721,9 +764,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.saveLoan(updated);
     setLoans((prev) => prev.map((l) => (l.id === id ? updated : l)));
-  };
+  }, [loans, isCloudSync, user?.id]);
 
-  const removeLoan = async (id: string) => {
+  const removeLoan = useCallback(async (id: string) => {
     if (isCloudSync && user?.id) {
       await deleteRecord('loans', id, user.id);
       setLoans((prev) => prev.filter((l) => l.id !== id));
@@ -731,9 +774,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.deleteLoan(id);
     setLoans((prev) => prev.filter((l) => l.id !== id));
-  };
+  }, [isCloudSync, user?.id]);
 
-  const addAsset = async (assetData: Omit<Asset, 'id' | 'createdAt' | 'lastUpdatedAt'>) => {
+  const addAsset = useCallback(async (assetData: Omit<Asset, 'id' | 'createdAt' | 'lastUpdatedAt'>) => {
     const now = Date.now();
     const newAsset: Asset = {
       ...assetData,
@@ -751,9 +794,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveAsset(newAsset);
     setAssets((prev) => [newAsset, ...prev]);
     return newAsset;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const editAsset = async (asset: Asset) => {
+  const editAsset = useCallback(async (asset: Asset) => {
     const updated: Asset = { ...asset, lastUpdatedAt: getCurrentDateString() };
     if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Asset & { user_id: string }>('assets', { ...updated, user_id: user.id }, user.id);
@@ -763,9 +806,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveAsset(updated);
     setAssets((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
     return updated;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const removeAsset = async (id: string) => {
+  const removeAsset = useCallback(async (id: string) => {
     if (isCloudSync && user?.id) {
       await deleteRecord('assets', id, user.id);
       setAssets((prev) => prev.filter((a) => a.id !== id));
@@ -773,9 +816,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.deleteAsset(id);
     setAssets((prev) => prev.filter((a) => a.id !== id));
-  };
+  }, [isCloudSync, user?.id]);
 
-  const addLiability = async (liabData: Omit<Liability, 'id' | 'createdAt' | 'lastUpdatedAt'>) => {
+  const addLiability = useCallback(async (liabData: Omit<Liability, 'id' | 'createdAt' | 'lastUpdatedAt'>) => {
     const now = Date.now();
     const newLiab: Liability = {
       ...liabData,
@@ -793,9 +836,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveLiability(newLiab);
     setLiabilities((prev) => [newLiab, ...prev]);
     return newLiab;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const editLiability = async (liability: Liability) => {
+  const editLiability = useCallback(async (liability: Liability) => {
     const updated: Liability = { ...liability, lastUpdatedAt: getCurrentDateString() };
     if (isCloudSync && user?.id) {
       const saved = await upsertRecord<Liability & { user_id: string }>('liabilities', { ...updated, user_id: user.id }, user.id);
@@ -805,9 +848,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await db.saveLiability(updated);
     setLiabilities((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
     return updated;
-  };
+  }, [isCloudSync, user?.id]);
 
-  const removeLiability = async (id: string) => {
+  const removeLiability = useCallback(async (id: string) => {
     if (isCloudSync && user?.id) {
       await deleteRecord('liabilities', id, user.id);
       setLiabilities((prev) => prev.filter((l) => l.id !== id));
@@ -815,9 +858,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.deleteLiability(id);
     setLiabilities((prev) => prev.filter((l) => l.id !== id));
-  };
+  }, [isCloudSync, user?.id]);
 
-  const updateSettings = async (newSettings: Partial<UserSettings>) => {
+  const updateSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
     const updated: UserSettings = { ...settings, ...newSettings };
     if (isCloudSync && user?.id) {
       await upsertRecord<{ key: string; value: UserSettings; user_id: string }>('app_settings', {
@@ -830,9 +873,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
     await db.saveSettings(updated);
     setSettings(updated);
-  };
+  }, [settings, isCloudSync, user?.id]);
 
-  const signInWithEmail = async (email: string, password: string): Promise<AuthUser | null> => {
+  const signInWithEmail = useCallback(async (email: string, password: string): Promise<AuthUser | null> => {
     if (!hasSupabaseConfig()) {
       const localUser = signInLocal(email, password);
       if (!localUser) return null;
@@ -848,9 +891,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setUser(normalized);
     await refreshData();
     return normalized;
-  };
+  }, [refreshData]);
 
-  const signUpWithEmail = async (email: string, password: string, favoriteFruit?: string): Promise<AuthUser | null> => {
+  const signUpWithEmail = useCallback(async (email: string, password: string, favoriteFruit?: string): Promise<AuthUser | null> => {
     if (!hasSupabaseConfig()) {
       const localUser = signUpLocal(email, password, password, favoriteFruit);
       if (!localUser) return null;
@@ -893,9 +936,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setUser(normalized);
     await refreshData();
     return normalized;
-  };
+  }, [refreshData]);
 
-  const loadSampleDataInternal = async (targetUser: AuthUser | null) => {
+  const loadSampleDataInternal = useCallback(async (targetUser: AuthUser | null) => {
     const sample = generateSampleDataset();
     const isUserCloudSync = Boolean(hasSupabaseConfig() && targetUser?.id && !targetUser?.isGuest);
     const userId = isUserCloudSync ? targetUser!.id : null;
@@ -948,13 +991,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
     }
     await refreshData();
-  };
+  }, [refreshData]);
 
-  const loadSampleData = async (): Promise<void> => {
+  const loadSampleData = useCallback(async (): Promise<void> => {
     await loadSampleDataInternal(user);
-  };
+  }, [loadSampleDataInternal, user]);
 
-  const continueAsGuest = async (withSampleData?: boolean): Promise<boolean> => {
+  const continueAsGuest = useCallback(async (withSampleData?: boolean): Promise<boolean> => {
     const guest = createGuestSession();
     const normalized: AuthUser = { id: guest.id, email: guest.email, isGuest: true };
     setUser(normalized);
@@ -964,16 +1007,16 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       await refreshData();
     }
     return true;
-  };
+  }, [loadSampleDataInternal, refreshData]);
 
-  const resetPasswordForEmail = async (email: string): Promise<void> => {
+  const resetPasswordForEmail = useCallback(async (email: string): Promise<void> => {
     if (!hasSupabaseConfig()) {
       throw new Error('Supabase Auth is not configured for email recovery.');
     }
     await repoResetPasswordForEmail(email);
-  };
+  }, []);
 
-  const resetPasswordWithFruit = async (email: string, favoriteFruit: string, newPassword: string) => {
+  const resetPasswordWithFruit = useCallback(async (email: string, favoriteFruit: string, newPassword: string) => {
     if (!hasSupabaseConfig()) {
       const reset = resetLocalPassword(email, favoriteFruit, newPassword);
       if (!reset) throw new Error('The email or favorite fruit did not match.');
@@ -996,9 +1039,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (!userRecord) throw new Error('Password changed, but automatic sign-in failed. Please log in.');
     setUser({ id: userRecord.id, email: userRecord.email ?? null });
     await refreshData();
-  };
+  }, [refreshData]);
 
-  const signOutUser = async () => {
+  const signOutUser = useCallback(async () => {
     signOutLocal();
     if (hasSupabaseConfig() && supabase) {
       await signOut().catch(() => {});
@@ -1013,73 +1056,137 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setLiabilities([]);
     setSnapshots([]);
     await refreshData();
-  };
+  }, [refreshData]);
+
+  const contextValue = useMemo(
+    () => ({
+      loading,
+      syncError,
+      retrySync,
+      continueAsGuest,
+      loadSampleData,
+      transactions,
+      budgets,
+      investments,
+      goals,
+      loans,
+      assets,
+      liabilities,
+      snapshots,
+      settings,
+      user,
+      authReady,
+      totalAssets,
+      totalLiabilities,
+      netWorth,
+      totalInvested,
+      totalInvestmentValue,
+      totalInvestmentGain,
+      investmentReturnPercent,
+      totalLoansOutstanding,
+      totalMonthlyEmi,
+      monthlyIncome,
+      monthlyExpenses,
+      monthlySavings,
+      financialHealth,
+      addTransaction,
+      addTransactionsBulk,
+      editTransaction,
+      removeTransaction,
+      saveCategoryBudget,
+      addInvestment,
+      editInvestment,
+      updateInvestmentCurrentValue,
+      removeInvestment,
+      addGoal,
+      editGoal,
+      contributeToGoal,
+      removeGoal,
+      addLoan,
+      editLoan,
+      payLoanEmi,
+      removeLoan,
+      addAsset,
+      editAsset,
+      removeAsset,
+      addLiability,
+      editLiability,
+      removeLiability,
+      updateSettings,
+      refreshData,
+      recordCurrentSnapshot,
+      signInWithEmail,
+      signUpWithEmail,
+      resetPasswordForEmail,
+      resetPasswordWithFruit,
+      signOutUser,
+    }),
+    [
+      loading,
+      syncError,
+      retrySync,
+      continueAsGuest,
+      loadSampleData,
+      transactions,
+      budgets,
+      investments,
+      goals,
+      loans,
+      assets,
+      liabilities,
+      snapshots,
+      settings,
+      user,
+      authReady,
+      totalAssets,
+      totalLiabilities,
+      netWorth,
+      totalInvested,
+      totalInvestmentValue,
+      totalInvestmentGain,
+      investmentReturnPercent,
+      totalLoansOutstanding,
+      totalMonthlyEmi,
+      monthlyIncome,
+      monthlyExpenses,
+      monthlySavings,
+      financialHealth,
+      addTransaction,
+      addTransactionsBulk,
+      editTransaction,
+      removeTransaction,
+      saveCategoryBudget,
+      addInvestment,
+      editInvestment,
+      updateInvestmentCurrentValue,
+      removeInvestment,
+      addGoal,
+      editGoal,
+      contributeToGoal,
+      removeGoal,
+      addLoan,
+      editLoan,
+      payLoanEmi,
+      removeLoan,
+      addAsset,
+      editAsset,
+      removeAsset,
+      addLiability,
+      editLiability,
+      removeLiability,
+      updateSettings,
+      refreshData,
+      recordCurrentSnapshot,
+      signInWithEmail,
+      signUpWithEmail,
+      resetPasswordForEmail,
+      resetPasswordWithFruit,
+      signOutUser,
+    ]
+  );
 
   return (
-    <FinanceContext.Provider
-      value={{
-        loading,
-        syncError,
-        retrySync,
-        continueAsGuest,
-        loadSampleData,
-        transactions,
-        budgets,
-        investments,
-        goals,
-        loans,
-        assets,
-        liabilities,
-        snapshots,
-        settings,
-        user,
-        authReady,
-        totalAssets,
-        totalLiabilities,
-        netWorth,
-        totalInvested,
-        totalInvestmentValue,
-        totalInvestmentGain,
-        investmentReturnPercent,
-        totalLoansOutstanding,
-        totalMonthlyEmi,
-        monthlyIncome,
-        monthlyExpenses,
-        monthlySavings,
-        financialHealth,
-        addTransaction,
-        addTransactionsBulk,
-        editTransaction,
-        removeTransaction,
-        saveCategoryBudget,
-        addInvestment,
-        editInvestment,
-        updateInvestmentCurrentValue,
-        removeInvestment,
-        addGoal,
-        editGoal,
-        contributeToGoal,
-        removeGoal,
-        addLoan,
-        editLoan,
-        payLoanEmi,
-        removeLoan,
-        addAsset,
-        editAsset,
-        removeAsset,
-        addLiability,
-        editLiability,
-        removeLiability,
-        updateSettings,
-        refreshData,
-        recordCurrentSnapshot,
-        signInWithEmail,
-        signUpWithEmail,
-        resetPasswordForEmail,
-        resetPasswordWithFruit,
-        signOutUser,
-      }}
-    >
+    <FinanceContext.Provider value={contextValue}>
       {children}
     </FinanceContext.Provider>
   );

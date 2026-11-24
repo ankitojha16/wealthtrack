@@ -15,10 +15,10 @@ interface BarComparisonChartProps {
   height?: number;
 }
 
-export const BarComparisonChart: React.FC<BarComparisonChartProps> = ({
+export const BarComparisonChart: React.FC<BarComparisonChartProps> = React.memo(function BarComparisonChart({
   items,
   currencySymbol = '₹',
-}) => {
+}) {
   const maxValue = Math.max(...items.map((i) => i.value), 1);
 
   return (
@@ -48,4 +48,5 @@ export const BarComparisonChart: React.FC<BarComparisonChartProps> = ({
       })}
     </div>
   );
-};
+});
+

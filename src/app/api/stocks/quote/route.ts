@@ -35,6 +35,44 @@ const REFERENCE_BENCHMARKS: Record<string, { price: number; change: number; chan
   TSLA: { price: 245.00, change: -3.50, changePercent: -1.41, exchange: 'NASDAQ' },
 };
 
+// In-memory cache for stock quotes with 5-minute TTL
+interface CachedQuote {
+  body: Record<string, unknown>;
+  status: number;
+  expiresAt: number;
+}
+
+const quoteCache = new Map<string, CachedQuote>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function jsonResponse(body: Record<string, unknown>, init?: { status?: number; cacheHit?: boolean }) {
+  const status = init?.status || 200;
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      'X-Cache': init?.cacheHit ? 'HIT' : 'MISS',
+    },
+  });
+}
+
+function setQuoteCache(key: string, body: Record<string, unknown>, status = 200) {
+  if (quoteCache.size > 500) {
+    // Purge expired or oldest items
+    const now = Date.now();
+    quoteCache.forEach((v, k) => {
+      if (v.expiresAt <= now) quoteCache.delete(k);
+    });
+    if (quoteCache.size > 500) {
+      const firstEntry = quoteCache.keys().next();
+      if (!firstEntry.done && firstEntry.value) {
+        quoteCache.delete(firstEntry.value);
+      }
+    }
+  }
+  quoteCache.set(key, { body, status, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const symbol = (searchParams.get('symbol') || '').trim().toUpperCase();
@@ -44,13 +82,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing symbol parameter' }, { status: 400 });
   }
 
+  const cacheKey = `${exchange}:${symbol}`;
+  const now = Date.now();
+  const cached = quoteCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return jsonResponse(cached.body, { status: cached.status, cacheHit: true });
+  }
+
   // TejHQ base URL is configured server-side; the OHLCV endpoint is keyless.
   const apiBaseUrl = process.env.TEJHQ_BASE_URL?.trim().replace(/\/+$/, '');
 
   if (!apiBaseUrl) {
     const benchmark = REFERENCE_BENCHMARKS[symbol];
     if (benchmark) {
-      return NextResponse.json({
+      const data = {
         symbol,
         exchange: benchmark.exchange || exchange,
         price: benchmark.price,
@@ -59,10 +104,12 @@ export async function GET(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
         provider: 'Market Benchmark',
         status: 'success',
-      });
+      };
+      setQuoteCache(cacheKey, data);
+      return jsonResponse(data, { cacheHit: false });
     }
 
-    return NextResponse.json({
+    return jsonResponse({
       symbol,
       exchange,
       status: 'unconfigured',
@@ -86,7 +133,7 @@ export async function GET(request: NextRequest) {
       console.warn(`[TejHQ] Stock quote request failed with HTTP ${response.status}`);
       const benchmark = REFERENCE_BENCHMARKS[symbol];
       if (benchmark) {
-        return NextResponse.json({
+        const data = {
           symbol,
           exchange: benchmark.exchange || exchange,
           price: benchmark.price,
@@ -95,16 +142,21 @@ export async function GET(request: NextRequest) {
           lastUpdated: new Date().toISOString(),
           provider: 'Market Benchmark',
           status: 'success',
-        });
+        };
+        setQuoteCache(cacheKey, data);
+        return jsonResponse(data, { cacheHit: false });
       }
 
-      return NextResponse.json({
-        symbol,
-        exchange,
-        status: 'unavailable',
-        provider: 'TejHQ',
-        message: `TejHQ returned HTTP ${response.status}. Check the API key and base URL.`,
-      });
+      return jsonResponse(
+        {
+          symbol,
+          exchange,
+          status: 'unavailable',
+          provider: 'TejHQ',
+          message: `TejHQ returned HTTP ${response.status}. Check the API key and base URL.`,
+        },
+        { status: 502 }
+      );
     }
 
     const data = await response.json();
@@ -124,7 +176,7 @@ export async function GET(request: NextRequest) {
       (previousClose > 0 ? ((price - previousClose) / previousClose) * 100 : null);
 
     if (price > 0) {
-      return NextResponse.json({
+      const quoteData = {
         symbol,
         exchange,
         price,
@@ -133,12 +185,14 @@ export async function GET(request: NextRequest) {
         lastUpdated: quote.date ? `${quote.date}T00:00:00.000Z` : new Date().toISOString(),
         provider: 'TejHQ EOD',
         status: 'success',
-      });
+      };
+      setQuoteCache(cacheKey, quoteData);
+      return jsonResponse(quoteData, { cacheHit: false });
     }
 
     const fallbackBench = REFERENCE_BENCHMARKS[symbol];
     if (fallbackBench) {
-      return NextResponse.json({
+      const benchData = {
         symbol,
         exchange: fallbackBench.exchange || exchange,
         price: fallbackBench.price,
@@ -147,10 +201,12 @@ export async function GET(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
         provider: 'Market Benchmark',
         status: 'success',
-      });
+      };
+      setQuoteCache(cacheKey, benchData);
+      return jsonResponse(benchData, { cacheHit: false });
     }
 
-    return NextResponse.json({
+    return jsonResponse({
       symbol,
       exchange,
       status: 'unavailable',
@@ -161,7 +217,7 @@ export async function GET(request: NextRequest) {
     console.warn('[TejHQ] Stock quote proxy error:', error instanceof Error ? error.message : 'Unknown error');
     const benchmark = REFERENCE_BENCHMARKS[symbol];
     if (benchmark) {
-      return NextResponse.json({
+      const benchData = {
         symbol,
         exchange: benchmark.exchange || exchange,
         price: benchmark.price,
@@ -170,10 +226,12 @@ export async function GET(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
         provider: 'Market Benchmark',
         status: 'success',
-      });
+      };
+      setQuoteCache(cacheKey, benchData);
+      return jsonResponse(benchData, { cacheHit: false });
     }
 
-    return NextResponse.json({
+    return jsonResponse({
       symbol,
       exchange,
       status: 'unavailable',

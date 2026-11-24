@@ -35,12 +35,39 @@ const POPULAR_STOCKS = [
   { symbol: 'TSLA', name: 'Tesla Inc.', exchange: 'NASDAQ', currency: 'USD' },
 ];
 
+// In-memory cache for stock searches with 15-minute TTL
+interface CachedSearch {
+  results: unknown[];
+  expiresAt: number;
+}
+
+const searchCache = new Map<string, CachedSearch>();
+const SEARCH_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+function jsonSearchResponse(results: unknown[], isHit = false) {
+  return NextResponse.json(
+    { results },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=1800',
+        'X-Cache': isHit ? 'HIT' : 'MISS',
+      },
+    }
+  );
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') || '').trim().toLowerCase();
 
   if (!q) {
-    return NextResponse.json({ results: [] });
+    return jsonSearchResponse([], false);
+  }
+
+  const now = Date.now();
+  const cached = searchCache.get(q);
+  if (cached && cached.expiresAt > now) {
+    return jsonSearchResponse(cached.results, true);
   }
 
   // If TejHQ configured, proxy to their search endpoint
@@ -62,7 +89,8 @@ export async function GET(request: NextRequest) {
         const externalData = await response.json();
         // Support both { results: [] } and flat array responses
         const results = Array.isArray(externalData) ? externalData : externalData.results ?? [];
-        return NextResponse.json({ results });
+        searchCache.set(q, { results, expiresAt: now + SEARCH_CACHE_TTL_MS });
+        return jsonSearchResponse(results, false);
       }
     } catch (err) {
       console.warn('[TejHQ] Stock search proxy error:', err);
@@ -74,5 +102,6 @@ export async function GET(request: NextRequest) {
     (s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
   ).slice(0, 10);
 
-  return NextResponse.json({ results: matched });
+  searchCache.set(q, { results: matched, expiresAt: now + SEARCH_CACHE_TTL_MS });
+  return jsonSearchResponse(matched, false);
 }

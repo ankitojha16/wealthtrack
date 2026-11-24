@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useFinance } from '@/lib/context/FinanceContext';
 import { OverviewCards } from '@/components/dashboard/OverviewCards';
 import { FinancialHealthCard } from '@/components/dashboard/FinancialHealthCard';
@@ -9,10 +10,6 @@ import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
 import { LineTrendChart } from '@/components/charts/LineTrendChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { BarComparisonChart } from '@/components/charts/BarComparisonChart';
-import { TransactionModal } from '@/components/budget/TransactionModal';
-import { InvestmentModal } from '@/components/investments/InvestmentModal';
-import { GoalModal } from '@/components/goals/GoalModal';
-import { LoanModal } from '@/components/loans/LoanModal';
 import { Transaction } from '@/types';
 import { formatCurrency, formatPercent, formatMonthYear, getCurrentMonthYearString } from '@/lib/formatters';
 import {
@@ -29,6 +26,37 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
+
+// Code-split modals so their bundle is only fetched when opened
+const TransactionModal = dynamic(
+  () => import('@/components/budget/TransactionModal').then((mod) => mod.TransactionModal),
+  { ssr: false }
+);
+const InvestmentModal = dynamic(
+  () => import('@/components/investments/InvestmentModal').then((mod) => mod.InvestmentModal),
+  { ssr: false }
+);
+const GoalModal = dynamic(
+  () => import('@/components/goals/GoalModal').then((mod) => mod.GoalModal),
+  { ssr: false }
+);
+const LoanModal = dynamic(
+  () => import('@/components/loans/LoanModal').then((mod) => mod.LoanModal),
+  { ssr: false }
+);
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Food: '#f97316',
+  Transport: '#06b6d4',
+  Housing: '#3b82f6',
+  Education: '#8b5cf6',
+  Shopping: '#ec4899',
+  Entertainment: '#a855f7',
+  Bills: '#ef4444',
+  Healthcare: '#10b981',
+  Travel: '#14b8a6',
+  Other: '#64748b',
+};
 
 export default function DashboardPage() {
   const {
@@ -73,81 +101,76 @@ export default function DashboardPage() {
   }, []);
 
   // Expense distribution data for Donut
-  const currentMonthExpenses = transactions.filter((t) => t.type === 'expense');
-  const expenseByCategory: Record<string, number> = {};
-  currentMonthExpenses.forEach((t) => {
-    expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
-  });
-
-  const categoryColors: Record<string, string> = {
-    Food: '#f97316',
-    Transport: '#06b6d4',
-    Housing: '#3b82f6',
-    Education: '#8b5cf6',
-    Shopping: '#ec4899',
-    Entertainment: '#a855f7',
-    Bills: '#ef4444',
-    Healthcare: '#10b981',
-    Travel: '#14b8a6',
-    Other: '#64748b',
-  };
-
-  const expenseSegments = Object.entries(expenseByCategory).map(([label, value]) => ({
-    label,
-    value,
-    color: categoryColors[label] || '#0284c7',
-  }));
+  const expenseSegments = useMemo(() => {
+    const expenseByCategory: Record<string, number> = {};
+    for (const t of transactions) {
+      if (t.type === 'expense') {
+        expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + (t.amount || 0);
+      }
+    }
+    return Object.entries(expenseByCategory).map(([label, value]) => ({
+      label,
+      value,
+      color: CATEGORY_COLORS[label] || '#0284c7',
+    }));
+  }, [transactions]);
 
   // Net worth trend data from authentic snapshots
-  const trendData = snapshots.map((s) => ({
-    label: s.monthYear,
-    value: s.netWorth,
-  }));
+  const trendData = useMemo(() => {
+    return snapshots.map((s) => ({
+      label: s.monthYear,
+      value: s.netWorth,
+    }));
+  }, [snapshots]);
 
   // Smart data-driven insights & reminders
   const currentMonthYear = getCurrentMonthYearString();
-  const currentMonthSnapshotRecorded = snapshots.some((s) => s.monthYear === currentMonthYear);
-  const totalBudgetLimit = budgets.reduce((sum, b) => sum + (b.monthlyLimit || 0), 0);
-  const totalCurrentExpenses = transactions
-    .filter((t) => t.type === 'expense' && t.date.startsWith(currentMonthYear))
-    .reduce((sum, t) => sum + t.amount, 0);
-  const budgetUtilization = totalBudgetLimit > 0 ? (totalCurrentExpenses / totalBudgetLimit) * 100 : 0;
-  const savingsRate = monthlyIncome > 0 ? Math.max(0, (monthlySavings / monthlyIncome) * 100) : 0;
 
-  const reminders: { id: string; title: string; desc: string; icon: any; href?: string; action?: () => void; type: 'info' | 'warning' }[] = [];
+  const reminders = useMemo(() => {
+    const currentMonthSnapshotRecorded = snapshots.some((s) => s.monthYear === currentMonthYear);
+    const totalBudgetLimit = budgets.reduce((sum, b) => sum + (b.monthlyLimit || 0), 0);
+    const totalCurrentExpenses = transactions
+      .filter((t) => t.type === 'expense' && t.date.startsWith(currentMonthYear))
+      .reduce((sum, t) => sum + t.amount, 0);
+    const budgetUtilization = totalBudgetLimit > 0 ? (totalCurrentExpenses / totalBudgetLimit) * 100 : 0;
 
-  if (totalMonthlyEmi > 0) {
-    reminders.push({
-      id: 'emi',
-      title: 'Monthly EMI Obligations',
-      desc: `${loans.length} active loan${loans.length > 1 ? 's' : ''} with ${formatCurrency(totalMonthlyEmi, { symbol: settings.currencySymbol })} due this month.`,
-      icon: CreditCard,
-      href: '/loans',
-      type: 'info',
-    });
-  }
+    const list: { id: string; title: string; desc: string; icon: any; href?: string; action?: () => void; type: 'info' | 'warning' }[] = [];
 
-  if (totalBudgetLimit > 0 && budgetUtilization >= 80) {
-    reminders.push({
-      id: 'budget',
-      title: budgetUtilization > 100 ? 'Budget Overspent' : 'Budget Utilization Warning',
-      desc: `${budgetUtilization.toFixed(0)}% utilized (${formatCurrency(totalCurrentExpenses, { symbol: settings.currencySymbol })} of ${formatCurrency(totalBudgetLimit, { symbol: settings.currencySymbol })}).`,
-      icon: AlertTriangle,
-      href: '/budget',
-      type: budgetUtilization > 100 ? 'warning' : 'info',
-    });
-  }
+    if (totalMonthlyEmi > 0) {
+      list.push({
+        id: 'emi',
+        title: 'Monthly EMI Obligations',
+        desc: `${loans.length} active loan${loans.length > 1 ? 's' : ''} with ${formatCurrency(totalMonthlyEmi, { symbol: settings.currencySymbol })} due this month.`,
+        icon: CreditCard,
+        href: '/loans',
+        type: 'info',
+      });
+    }
 
-  if (!currentMonthSnapshotRecorded && (transactions.length > 0 || investments.length > 0)) {
-    reminders.push({
-      id: 'snapshot',
-      title: 'Monthly Snapshot Reminder',
-      desc: `Save your ${formatMonthYear(currentMonthYear)} net worth snapshot to keep trend graphs current.`,
-      icon: ShieldCheck,
-      action: () => recordCurrentSnapshot(),
-      type: 'info',
-    });
-  }
+    if (totalBudgetLimit > 0 && budgetUtilization >= 80) {
+      list.push({
+        id: 'budget',
+        title: budgetUtilization > 100 ? 'Budget Overspent' : 'Budget Utilization Warning',
+        desc: `${budgetUtilization.toFixed(0)}% utilized (${formatCurrency(totalCurrentExpenses, { symbol: settings.currencySymbol })} of ${formatCurrency(totalBudgetLimit, { symbol: settings.currencySymbol })}).`,
+        icon: AlertTriangle,
+        href: '/budget',
+        type: budgetUtilization > 100 ? 'warning' : 'info',
+      });
+    }
+
+    if (!currentMonthSnapshotRecorded && (transactions.length > 0 || investments.length > 0)) {
+      list.push({
+        id: 'snapshot',
+        title: 'Monthly Snapshot Reminder',
+        desc: `Save your ${formatMonthYear(currentMonthYear)} net worth snapshot to keep trend graphs current.`,
+        icon: ShieldCheck,
+        action: () => recordCurrentSnapshot(),
+        type: 'info',
+      });
+    }
+
+    return list;
+  }, [snapshots, currentMonthYear, budgets, transactions, investments.length, totalMonthlyEmi, loans.length, settings.currencySymbol, recordCurrentSnapshot]);
 
   if (loading) {
     return (

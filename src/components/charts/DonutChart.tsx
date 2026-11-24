@@ -17,13 +17,13 @@ interface DonutChartProps {
   emptyMessage?: string;
 }
 
-export const DonutChart: React.FC<DonutChartProps> = ({
+export const DonutChart: React.FC<DonutChartProps> = React.memo(function DonutChart({
   data,
   currencySymbol = '₹',
   size = 220,
   innerRadius = 70,
   emptyMessage = 'No data recorded yet',
-}) => {
+}) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const filteredData = data.filter((d) => d.value > 0);
@@ -134,4 +134,5 @@ export const DonutChart: React.FC<DonutChartProps> = ({
       </div>
     </div>
   );
-};
+});
+

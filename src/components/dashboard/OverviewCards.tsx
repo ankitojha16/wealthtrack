@@ -6,7 +6,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { Landmark, AlertCircle, ShieldCheck, PiggyBank, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import Link from 'next/link';
 
-export const OverviewCards: React.FC = () => {
+export const OverviewCards: React.FC = React.memo(function OverviewCards() {
   const { totalAssets, totalLiabilities, netWorth, monthlySavings, monthlyIncome, settings } = useFinance();
   const sym = settings.currencySymbol;
   const savingsRate = monthlyIncome > 0 ? Math.max(0, Math.min(100, (monthlySavings / monthlyIncome) * 100)) : 0;
@@ -118,4 +118,5 @@ export const OverviewCards: React.FC = () => {
       </Link>
     </div>
   );
-};
+});
+

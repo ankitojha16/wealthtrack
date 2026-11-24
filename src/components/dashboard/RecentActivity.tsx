@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '@/lib/context/FinanceContext';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { Search, ArrowUpRight, ArrowDownRight, Trash2, Edit2, Wallet } from 'lucide-react';
@@ -12,23 +12,28 @@ interface RecentActivityProps {
   onOpenAdd?: () => void;
 }
 
-export const RecentActivity: React.FC<RecentActivityProps> = ({ onEditTransaction, onOpenAdd }) => {
+export const RecentActivity: React.FC<RecentActivityProps> = React.memo(function RecentActivity({ onEditTransaction, onOpenAdd }) {
   const { transactions, removeTransaction, settings } = useFinance();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
 
-  const filtered = transactions.filter((t) => {
-    const matchType = filterType === 'all' || t.type === filterType;
-    const query = search.toLowerCase();
-    const matchSearch =
-      !search ||
-      t.category.toLowerCase().includes(query) ||
-      (t.description && t.description.toLowerCase().includes(query)) ||
-      ((t.paymentMethod || '').toLowerCase().includes(query));
-    return matchType && matchSearch;
-  });
-
-  const recentItems = filtered.slice(0, 8);
+  const recentItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const result: Transaction[] = [];
+    for (const t of transactions) {
+      if (filterType !== 'all' && t.type !== filterType) continue;
+      if (
+        !query ||
+        t.category.toLowerCase().includes(query) ||
+        (t.description && t.description.toLowerCase().includes(query)) ||
+        ((t.paymentMethod || '').toLowerCase().includes(query))
+      ) {
+        result.push(t);
+        if (result.length >= 8) break;
+      }
+    }
+    return result;
+  }, [transactions, filterType, search]);
 
   return (
     <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all">
@@ -201,4 +206,5 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ onEditTransactio
       )}
     </div>
   );
-};
+});
+

@@ -21,6 +21,7 @@ import {
   Info,
   LogIn,
   LogOut,
+  Flame,
 } from 'lucide-react';
 import { useFinance } from '@/lib/context/FinanceContext';
 
@@ -42,7 +43,8 @@ export const MobileNav: React.FC = () => {
       : { label: 'Login / Sign up', href: '/auth', icon: LogIn, desc: 'Access your account' },
     { label: 'Investments', href: '/investments', icon: TrendingUp, desc: 'Portfolio & returns' },
     { label: 'Reports', href: '/reports', icon: FileBarChart2, desc: 'Net worth & financial health' },
-    { label: 'Calculators', href: '/calculators', icon: Calculator, desc: '19 Financial calculators' },
+    { label: 'Calculators', href: '/calculators', icon: Calculator, desc: '20 Financial calculators' },
+    { label: 'FIRE Simulator', href: '/tools/fire-simulator', icon: Flame, desc: 'Retirement milestone modeler' },
     { label: 'Learn', href: '/learn', icon: BookOpen, desc: 'Guides & knowledge base' },
     { label: 'Settings', href: '/settings', icon: Settings, desc: 'Preferences, currency & data' },
     { label: 'Feedback', href: '/feedback', icon: MessageSquare, desc: 'Contact founder & team' },

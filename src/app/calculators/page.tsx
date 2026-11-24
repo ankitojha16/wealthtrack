@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { CALCULATORS } from '@/lib/data/calculators';
-import { Calculator, Search, ArrowRight, Sparkles } from 'lucide-react';
+import { Calculator, Search, ArrowRight, Sparkles, Flame, TrendingUp } from 'lucide-react';
 
 export default function CalculatorsCatalogPage() {
   const [search, setSearch] = useState('');
@@ -44,6 +44,59 @@ export default function CalculatorsCatalogPage() {
         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
           Comprehensive suite of 20 calculators for SIPs, lumpsum investing, EMIs, loan prepayment, CAGR, XIRR, fixed deposits, inflation, and retirement planning.
         </p>
+      </div>
+
+      {/* Featured Interactive Simulators */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+        <Link
+          href="/tools/fire-simulator"
+          className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-rose-500/10 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-rose-950/30 border border-amber-200/80 dark:border-amber-900/50 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Flame className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-slate-900 dark:text-white">
+                  FIRE Simulator
+                </span>
+                <span className="text-[9px] uppercase font-black px-1.5 py-0.2 rounded bg-amber-500 text-white">
+                  Advanced
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Simulate Lean, Standard & Fat FIRE with safe withdrawal rates.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 group-hover:translate-x-1 transition-transform" />
+        </Link>
+
+        <Link
+          href="/investments"
+          className="p-5 rounded-3xl bg-gradient-to-br from-sky-500/10 via-indigo-500/5 to-purple-500/10 dark:from-sky-950/30 dark:via-indigo-950/20 dark:to-purple-950/30 border border-sky-200/80 dark:border-sky-900/50 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-sky-500/15 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-slate-900 dark:text-white">
+                  Portfolio Rebalancer
+                </span>
+                <span className="text-[9px] uppercase font-black px-1.5 py-0.2 rounded bg-sky-600 text-white">
+                  New
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Target vs actual asset allocation matrix with rebalancing trades.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 group-hover:translate-x-1 transition-transform" />
+        </Link>
       </div>
 
       {/* Search & Category Filter Pills */}

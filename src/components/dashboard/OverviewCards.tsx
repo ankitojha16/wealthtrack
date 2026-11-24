@@ -7,8 +7,10 @@ import { Landmark, AlertCircle, ShieldCheck, PiggyBank, ArrowUpRight, ArrowDownR
 import Link from 'next/link';
 
 export const OverviewCards: React.FC = () => {
-  const { totalAssets, totalLiabilities, netWorth, monthlySavings, settings } = useFinance();
+  const { totalAssets, totalLiabilities, netWorth, monthlySavings, monthlyIncome, settings } = useFinance();
   const sym = settings.currencySymbol;
+  const savingsRate = monthlyIncome > 0 ? Math.max(0, Math.min(100, (monthlySavings / monthlyIncome) * 100)) : 0;
+  const debtRatio = totalAssets > 0 ? Math.min(100, (totalLiabilities / totalAssets) * 100) : 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -62,9 +64,14 @@ export const OverviewCards: React.FC = () => {
         className="p-5 rounded-2xl bg-gradient-to-br from-white to-sky-50/50 dark:from-slate-900 dark:to-sky-950/20 border border-sky-200/80 dark:border-sky-900/60 shadow-sm hover:shadow-md transition-all group"
       >
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
-            Net Worth
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+              Net Worth
+            </span>
+            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300">
+              Debt {debtRatio.toFixed(0)}%
+            </span>
+          </div>
           <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-900/60 flex items-center justify-center text-sky-600 dark:text-sky-300 group-hover:scale-110 transition-transform">
             <ShieldCheck className="w-4 h-4" />
           </div>
@@ -86,9 +93,14 @@ export const OverviewCards: React.FC = () => {
         className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group"
       >
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Monthly Savings
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Monthly Savings
+            </span>
+            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
+              {savingsRate > 0 ? `${savingsRate.toFixed(0)}% Saved` : '0% Saved'}
+            </span>
+          </div>
           <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
             <PiggyBank className="w-4 h-4" />
           </div>

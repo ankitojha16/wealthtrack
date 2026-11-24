@@ -22,9 +22,10 @@ interface OnboardingChecklistProps {
 }
 
 export const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ onOpenModal }) => {
-  const { transactions, budgets, investments, goals } = useFinance();
+  const { transactions, budgets, investments, goals, loadSampleData } = useFinance();
   const [isDismissed, setIsDismissed] = useState<boolean>(true);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [isLoadingSample, setIsLoadingSample] = useState<boolean>(false);
 
   useEffect(() => {
     const dismissed = localStorage.getItem('wealthtrack_hide_onboarding') === 'true';
@@ -36,6 +37,15 @@ export const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ onOpen
   const hasBudget = budgets.length > 0;
   const hasInvestment = investments.length > 0;
   const hasGoal = goals.length > 0;
+
+  const handleLoadSample = async () => {
+    setIsLoadingSample(true);
+    try {
+      await loadSampleData();
+    } finally {
+      setIsLoadingSample(false);
+    }
+  };
 
   const steps = [
     {
@@ -121,7 +131,19 @@ export const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ onOpen
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          {completedCount < steps.length && (
+            <button
+              type="button"
+              onClick={handleLoadSample}
+              disabled={isLoadingSample}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 shadow-xs hover:bg-sky-50 dark:hover:bg-slate-800 transition"
+              title="Pre-populate realistic sample portfolio to preview all charts and calculations"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-sky-500" />
+              <span>{isLoadingSample ? 'Loading sample...' : 'Load Sample Portfolio'}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}

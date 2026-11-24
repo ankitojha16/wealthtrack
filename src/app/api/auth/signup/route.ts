@@ -30,19 +30,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Supabase server admin is not configured.' }, { status: 503 });
   }
 
-  // Priority 1: Do NOT auto-confirm email (email_confirm: false).
-  // Require legitimate email verification.
+  // Auto-confirm user email upon creation so first-time registration allows immediate sign-in
   const { data, error } = await admin.auth.admin.createUser({
     email,
     password,
-    email_confirm: false,
+    email_confirm: true,
   });
 
   if (error || !data.user) {
     const duplicate = error?.message.toLowerCase().includes('already registered') ||
                       error?.message.toLowerCase().includes('already exists');
     return NextResponse.json(
-      { error: duplicate ? 'An account with this email already exists.' : (error?.message || 'Unable to create the account.') },
+      { error: duplicate ? 'An account with this email already exists. Please sign in instead.' : (error?.message || 'Unable to create the account.') },
       { status: duplicate ? 409 : 400 }
     );
   }
@@ -50,6 +49,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     id: data.user.id,
     email,
-    message: 'Account created. Please check your email to verify your account before signing in.',
+    message: 'Account created successfully! You can now sign in immediately.',
   });
 }

@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Palette,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ACCENT_COLOR_OPTIONS } from '@/lib/data/categories';
@@ -35,14 +36,30 @@ export default function SettingsPage() {
     investments,
     loans,
     refreshData,
+    loadSampleData,
     user,
     signOutUser,
   } = useFinance();
 
   const [importStatus, setImportStatus] = useState<string>('');
   const [importError, setImportError] = useState<string>('');
+  const [sampleStatus, setSampleStatus] = useState<string>('');
+  const [isLoadingSample, setIsLoadingSample] = useState<boolean>(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+
+  const handleLoadSampleData = async () => {
+    try {
+      setIsLoadingSample(true);
+      setSampleStatus('');
+      await loadSampleData();
+      setSampleStatus('Sample portfolio loaded! Check your dashboard and charts.');
+    } catch (err: any) {
+      setImportError(err.message || 'Failed to load sample portfolio.');
+    } finally {
+      setIsLoadingSample(false);
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -365,6 +382,34 @@ export default function SettingsPage() {
             className="hidden"
           />
         </label>
+      </div>
+
+      {/* Demo & Starter Portfolio */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-sky-500" />
+          Demo & Starter Portfolio
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Populate realistic sample financial records to explore all charts, SIP calculations, loan amortization, and historical net worth curves.
+        </p>
+
+        {sampleStatus && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{sampleStatus}</span>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleLoadSampleData}
+          disabled={isLoadingSample}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-xs font-bold text-sky-700 dark:text-sky-300 transition-all shadow-xs"
+        >
+          <Sparkles className="w-4 h-4 text-sky-500" />
+          <span>{isLoadingSample ? 'Populating portfolio...' : 'Load Sample Portfolio'}</span>
+        </button>
       </div>
 
       {/* Danger Zone */}

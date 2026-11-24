@@ -37,6 +37,7 @@ import {
   resetPasswordForEmail as repoResetPasswordForEmail,
   signOut,
 } from '@/lib/supabase/repository';
+import { generateSampleDataset } from '@/lib/data/sampleData';
 
 type AuthUser = { id: string; email?: string | null; isGuest?: boolean };
 
@@ -44,7 +45,8 @@ interface FinanceContextType {
   loading: boolean;
   syncError: string | null;
   retrySync: () => Promise<void>;
-  continueAsGuest: () => Promise<boolean>;
+  continueAsGuest: (withSampleData?: boolean) => Promise<boolean>;
+  loadSampleData: () => Promise<void>;
   transactions: Transaction[];
   budgets: CategoryBudget[];
   investments: Investment[];
@@ -853,8 +855,16 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           await refreshData();
           return normalized;
         }
+      } else {
+        const errJson = await response.json().catch(() => null);
+        if (errJson?.error) {
+          throw new Error(errJson.error);
+        }
       }
-    } catch {
+    } catch (err: any) {
+      if (err?.message && !err.message.includes('fetch failed')) {
+        throw err;
+      }
       // Fallback to client-side Supabase auth signup
     }
 
@@ -864,6 +874,77 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setUser(normalized);
     await refreshData();
     return normalized;
+  };
+
+  const loadSampleDataInternal = async (targetUser: AuthUser | null) => {
+    const sample = generateSampleDataset();
+    const isUserCloudSync = Boolean(hasSupabaseConfig() && targetUser?.id && !targetUser?.isGuest);
+    const userId = isUserCloudSync ? targetUser!.id : null;
+
+    if (userId) {
+      for (const t of sample.transactions) {
+        await upsertRecord('transactions', { ...t, user_id: userId }, userId).catch(() => {});
+      }
+      for (const b of sample.budgets) {
+        const safeKey = b.category.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        await upsertRecord('budgets', { id: `b_${userId}_${safeKey}`, user_id: userId, category: b.category, monthlyLimit: b.monthlyLimit }, userId).catch(() => {});
+      }
+      for (const inv of sample.investments) {
+        await upsertRecord('investments', { ...inv, user_id: userId }, userId).catch(() => {});
+      }
+      for (const g of sample.goals) {
+        await upsertRecord('goals', { ...g, user_id: userId }, userId).catch(() => {});
+      }
+      for (const l of sample.loans) {
+        await upsertRecord('loans', { ...l, user_id: userId }, userId).catch(() => {});
+      }
+      for (const a of sample.assets) {
+        await upsertRecord('assets', { ...a, user_id: userId }, userId).catch(() => {});
+      }
+      for (const s of sample.snapshots) {
+        await upsertRecord('snapshots', { ...s, user_id: userId }, userId).catch(() => {});
+      }
+    } else {
+      await db.clearAllData();
+      for (const t of sample.transactions) {
+        await db.saveTransaction(t);
+      }
+      for (const b of sample.budgets) {
+        await db.saveBudget(b);
+      }
+      for (const inv of sample.investments) {
+        await db.saveInvestment(inv);
+      }
+      for (const g of sample.goals) {
+        await db.saveGoal(g);
+      }
+      for (const l of sample.loans) {
+        await db.saveLoan(l);
+      }
+      for (const a of sample.assets) {
+        await db.saveAsset(a);
+      }
+      for (const s of sample.snapshots) {
+        await db.saveSnapshot(s);
+      }
+    }
+    await refreshData();
+  };
+
+  const loadSampleData = async (): Promise<void> => {
+    await loadSampleDataInternal(user);
+  };
+
+  const continueAsGuest = async (withSampleData?: boolean): Promise<boolean> => {
+    const guest = createGuestSession();
+    const normalized: AuthUser = { id: guest.id, email: guest.email, isGuest: true };
+    setUser(normalized);
+    if (withSampleData) {
+      await loadSampleDataInternal(normalized);
+    } else {
+      await refreshData();
+    }
+    return true;
   };
 
   const resetPasswordForEmail = async (email: string): Promise<void> => {
@@ -898,14 +979,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await refreshData();
   };
 
-  const continueAsGuest = async (): Promise<boolean> => {
-    const guest = createGuestSession();
-    const normalized: AuthUser = { id: guest.id, email: guest.email, isGuest: true };
-    setUser(normalized);
-    await refreshData();
-    return true;
-  };
-
   const signOutUser = async () => {
     signOutLocal();
     if (hasSupabaseConfig() && supabase) {
@@ -930,6 +1003,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         syncError,
         retrySync,
         continueAsGuest,
+        loadSampleData,
         transactions,
         budgets,
         investments,

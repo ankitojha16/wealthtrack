@@ -55,9 +55,11 @@ export default function DashboardPage() {
     addGoal,
     addLoan,
     recordCurrentSnapshot,
+    loadSampleData,
   } = useFinance();
 
   const [greeting, setGreeting] = useState('Good morning 👋');
+  const [isLoadingSample, setIsLoadingSample] = useState(false);
   const [modalState, setModalState] = useState<{
     type: 'expense' | 'income' | 'investment' | 'goal' | 'loan' | null;
     initialData?: any;
@@ -214,6 +216,49 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Welcome Banner for Empty / First Login States */}
+      {!hasAnyData && (
+        <div className="p-6 rounded-3xl bg-linear-to-r from-sky-500/10 via-indigo-500/10 to-violet-500/10 dark:from-sky-950/40 dark:via-indigo-950/30 dark:to-violet-950/40 border border-sky-200/80 dark:border-sky-900/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300 text-[10px] font-bold uppercase tracking-wider">
+              <Sparkles className="w-3 h-3 text-sky-500" />
+              Welcome to WealthTrack
+            </div>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">
+              Get Started with Your Wealth Dashboard
+            </h2>
+            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl">
+              You haven&apos;t added any financial entries yet. Add your first income or expense, or load a realistic sample portfolio to see how WealthTrack visualizes your net worth, SIP returns, and loan schedules.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={async () => {
+                setIsLoadingSample(true);
+                try {
+                  await loadSampleData();
+                } finally {
+                  setIsLoadingSample(false);
+                }
+              }}
+              disabled={isLoadingSample}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20 transition-all cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{isLoadingSample ? 'Loading...' : 'Load Sample Portfolio'}</span>
+            </button>
+            <Link
+              href="/budget"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 transition-all"
+            >
+              <span>Import CSV</span>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Getting Started Onboarding Checklist */}
       <OnboardingChecklist onOpenModal={(type) => setModalState({ type })} />

@@ -20,14 +20,17 @@ import {
   LogIn,
   LogOut,
   User,
+  Search,
+  Coins,
 } from 'lucide-react';
 import { useFinance } from '@/lib/context/FinanceContext';
 
 interface NavbarProps {
   onOpenQuickAdd?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickAdd }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickAdd, onOpenCommandPalette }) => {
   const pathname = usePathname();
   const { settings, updateSettings, user, signOutUser } = useFinance();
 
@@ -93,6 +96,41 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickAdd }) => {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
+          {/* Global Search / Command Palette Shortcut */}
+          {onOpenCommandPalette && (
+            <button
+              type="button"
+              onClick={onOpenCommandPalette}
+              className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 transition text-xs"
+              title="Search and Quick Actions (Cmd+K)"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="text-[11px] font-medium">Search</span>
+              <kbd className="px-1 py-0.2 rounded bg-slate-200/70 dark:bg-slate-800 text-[10px] font-mono font-bold text-slate-500">⌘K</kbd>
+            </button>
+          )}
+
+          {/* Quick Currency Switcher */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = settings.currency === 'INR'
+                ? { currency: 'USD', currencySymbol: '$', numberFormat: 'international' as const }
+                : settings.currency === 'USD'
+                ? { currency: 'EUR', currencySymbol: '€', numberFormat: 'international' as const }
+                : settings.currency === 'EUR'
+                ? { currency: 'GBP', currencySymbol: '£', numberFormat: 'international' as const }
+                : { currency: 'INR', currencySymbol: '₹', numberFormat: 'indian' as const };
+              updateSettings(next);
+            }}
+            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-black transition cursor-pointer"
+            title={`Active currency: ${settings.currency} (${settings.currencySymbol}). Click to cycle currency.`}
+          >
+            <Coins className="w-3 h-3 text-amber-500" />
+            <span>{settings.currencySymbol}</span>
+            <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">{settings.currency}</span>
+          </button>
+
           {/* Quick Add Button */}
           {onOpenQuickAdd && (
             <button

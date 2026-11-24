@@ -24,7 +24,10 @@ WealthTrack is an all-in-one personal finance platform designed for tracking cas
 - **FIRE Simulator:** Comprehensive financial independence simulator computing Lean FIRE, Standard FIRE, and Fat FIRE milestone dates.
 - **Dual Tax Regime Engine:** Side-by-side comparison of Indian Old vs. New Tax Regimes (with Section 87A rebate and standard deductions).
 - **Loan Amortization & Prepayment Simulator:** Interactive prepayment schedules calculating total interest saved and tenure reduction.
-- **CSV Statement Importer:** Flexible CSV parser mapping debit/credit bank statements directly into categorized transactions.
+- **Global Command Palette (`⌘K` / `Ctrl+K`):**
+  - Instant spotlight search across all tools, calculators, pages, and quick actions with keyboard navigation.
+- **Quick Currency Switcher:**
+  - 1-click currency cycle toggle in the top navbar supporting `INR (₹)`, `USD ($)`, `EUR (€)`, and `GBP (£)` with instant system formatting.
 - **20 Financial Calculators:** Complete catalog of personal finance, investment, and loan calculators.
 
 ---
@@ -108,7 +111,7 @@ npm install
 # Run local development server
 npm run dev
 
-# Run automated test suites (48 tests covering Auth, RLS, Math, Budgets, Redirects)
+# Run automated test suites (50 tests covering Auth, RLS, Math, Budgets, Redirects, Command Palette)
 npm test
 
 # Type safety check

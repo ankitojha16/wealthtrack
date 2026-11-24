@@ -6,6 +6,7 @@ import { Navbar } from './Navbar';
 import { MobileNav } from './MobileNav';
 import { Footer } from './Footer';
 import { QuickAddModal } from '../dashboard/QuickAddModal';
+import { CommandPalette } from './CommandPalette';
 import { PwaRegister } from '../pwa/PwaRegister';
 import { useFinance } from '@/lib/context/FinanceContext';
 import { hasSupabaseConfig } from '@/lib/supabase/client';
@@ -23,11 +24,24 @@ const PROTECTED_ROUTES = [
 
 export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { user, authReady } = useFinance();
 
   const isProtected = PROTECTED_ROUTES.includes(pathname);
+
+  // Global keyboard shortcut: Cmd+K / Ctrl+K opens Command Palette
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (hasSupabaseConfig() && authReady && !user && isProtected) {
@@ -53,11 +67,19 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return (
     <div className="flex flex-col min-h-screen">
       <PwaRegister />
-      <Navbar onOpenQuickAdd={() => setIsQuickAddOpen(true)} />
+      <Navbar
+        onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+      />
       <main className="flex-1 pb-28 sm:pb-24 lg:pb-0">{children}</main>
       <Footer />
       <MobileNav />
       <QuickAddModal isOpen={isQuickAddOpen} onClose={() => setIsQuickAddOpen(false)} />
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+      />
     </div>
   );
 };

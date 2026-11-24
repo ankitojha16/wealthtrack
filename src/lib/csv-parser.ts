@@ -32,33 +32,54 @@ export function parseCSVLine(line: string): string[] {
  * Standardize date strings to YYYY-MM-DD
  */
 export function standardizeDate(raw: string): string {
-  if (!raw) return new Date().toISOString().split('T')[0];
+  const getTodayStr = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
+  if (!raw) return getTodayStr();
   const cleaned = raw.trim().replace(/^"|"$/g, '');
 
   // If already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
 
-  // DD/MM/YYYY or DD-MM-YYYY
-  const dmyMatch = cleaned.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-  if (dmyMatch) {
-    const [, day, month, year] = dmyMatch;
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  }
+  // DD/MM/YYYY or MM/DD/YYYY with 2 or 4 digit years
+  const partsMatch = cleaned.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
+  if (partsMatch) {
+    const [, firstStr, secondStr, yearStr] = partsMatch;
+    const first = parseInt(firstStr, 10);
+    const second = parseInt(secondStr, 10);
+    const fullYear = yearStr.length === 2 ? `20${yearStr}` : yearStr;
 
-  // MM/DD/YYYY
-  const mdyMatch = cleaned.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
-  if (mdyMatch) {
-    const [, month, day, year] = mdyMatch;
-    const fullYear = year.length === 2 ? `20${year}` : year;
-    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    let day = first;
+    let month = second;
+
+    if (first > 12 && second <= 12) {
+      // First is day (e.g. 25/03/2026)
+      day = first;
+      month = second;
+    } else if (first <= 12 && second > 12) {
+      // First is month (e.g. 03/25/2026 - US standard)
+      month = first;
+      day = second;
+    } else {
+      // Both <= 12: default to standard DD/MM/YYYY
+      day = first;
+      month = second;
+    }
+
+    return `${fullYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
   const parsed = new Date(cleaned);
   if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
-  return new Date().toISOString().split('T')[0];
+  return getTodayStr();
 }
 
 export interface CSVParseResult {

@@ -30,18 +30,20 @@ export function calculateEMI(principal: number, annualRate: number, tenureMonths
   const totalPayment = monthlyEmi * tenureMonths;
   const totalInterest = totalPayment - principal;
 
-  // Generate first 12 months breakdown for preview
+  // Generate complete amortization schedule breakdown (capped at 600 months / 50 years)
   const breakdown: { month: number; principal: number; interest: number; balance: number }[] = [];
   let balance = principal;
-  for (let m = 1; m <= Math.min(tenureMonths, 60); m++) {
+  const maxMonths = Math.min(tenureMonths, 600);
+  for (let m = 1; m <= maxMonths; m++) {
     const interestForMonth = balance * monthlyRate;
     const principalForMonth = monthlyEmi - interestForMonth;
     balance = Math.max(0, balance - principalForMonth);
+    if (balance < 0.01) balance = 0;
     breakdown.push({
       month: m,
-      principal: principalForMonth,
-      interest: interestForMonth,
-      balance,
+      principal: Math.round(principalForMonth * 100) / 100,
+      interest: Math.round(interestForMonth * 100) / 100,
+      balance: Math.round(balance * 100) / 100,
     });
   }
 

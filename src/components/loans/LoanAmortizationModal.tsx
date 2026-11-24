@@ -251,7 +251,7 @@ export const LoanAmortizationModal: React.FC<LoanAmortizationModalProps> = ({
           <div className="flex items-center justify-between">
             <h5 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
               <Calculator className="w-3.5 h-3.5 text-sky-500" />
-              <span>Upcoming Amortization Schedule (First {Math.min(baseCalc.breakdown.length, 24)} months)</span>
+              <span>Amortization Schedule ({baseCalc.breakdown.length} months)</span>
             </h5>
             <span className="text-[11px] text-slate-500">
               {tenureMonths} EMIs total

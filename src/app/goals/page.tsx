@@ -134,14 +134,16 @@ export default function GoalsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {goals.map((goal) => {
-            const percent = (goal.currentAmount / goal.targetAmount) * 100;
+            const percent = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
             const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
             const isCompleted = goal.currentAmount >= goal.targetAmount;
 
-            // Compute remaining months
+            // Compute remaining months & overdue state
             const tDate = new Date(goal.targetDate);
             const now = new Date();
-            const monthsLeft = Math.max(1, (tDate.getFullYear() - now.getFullYear()) * 12 + (tDate.getMonth() - now.getMonth()));
+            const rawMonthsDiff = (tDate.getFullYear() - now.getFullYear()) * 12 + (tDate.getMonth() - now.getMonth());
+            const isOverdue = !isCompleted && rawMonthsDiff < 0;
+            const monthsLeft = Math.max(1, rawMonthsDiff);
             const reqMonthly = remaining > 0 ? Math.ceil(remaining / monthsLeft) : 0;
 
             return (
@@ -230,15 +232,22 @@ export default function GoalsPage() {
                     <span className="flex items-center gap-1 text-[11px]">
                       <Calendar className="w-3 h-3" /> Target Date
                     </span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                      {formatMonthYear(goal.targetDate)}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {isOverdue && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
+                          Overdue
+                        </span>
+                      )}
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {formatMonthYear(goal.targetDate)}
+                      </span>
+                    </div>
                   </div>
 
                   {!isCompleted && (
                     <div className="flex justify-between items-center text-slate-500">
-                      <span className="text-[11px]">Required Monthly</span>
-                      <span className="font-bold text-sky-600 dark:text-sky-400">
+                      <span className="text-[11px]">{isOverdue ? 'Catch-up Required' : 'Required Monthly'}</span>
+                      <span className={`font-bold ${isOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-sky-600 dark:text-sky-400'}`}>
                         {formatCurrency(reqMonthly, { symbol: settings.currencySymbol })}/mo
                       </span>
                     </div>

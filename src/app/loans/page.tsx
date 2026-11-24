@@ -218,14 +218,20 @@ export default function LoansPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => payLoanEmi(loan.id)}
-                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg shadow-sm"
-                    title="Record that you paid this month's installment"
-                  >
-                    Paid EMI
-                  </button>
+                  {loan.emisRemaining === 0 || loan.outstandingAmount === 0 ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="w-3 h-3" /> Fully Repaid
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => payLoanEmi(loan.id)}
+                      className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg shadow-sm"
+                      title="Record that you paid this month's installment"
+                    >
+                      Paid EMI
+                    </button>
+                  )}
                 </div>
 
                 {/* Repayment Progress */}
@@ -247,7 +253,9 @@ export default function LoansPage() {
                 {/* Next EMI Date and Interest */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500">
                   <span>Rate: {(loan.interestRate ?? 0) > 0 ? `${loan.interestRate}% p.a.` : 'Not set'}</span>
-                  {loan.nextEmiDate ? (
+                  {loan.emisRemaining === 0 || loan.outstandingAmount === 0 ? (
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Status: Loan Settled</span>
+                  ) : loan.nextEmiDate ? (
                     <span className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
                       <Calendar className="w-3.5 h-3.5 text-sky-500" />
                       Next: {formatDate(loan.nextEmiDate)}

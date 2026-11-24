@@ -378,7 +378,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       .filter((a) => a.category === 'Financial' && ['Bank', 'Cash', 'Savings'].some((k) => a.name.toLowerCase().includes(k.toLowerCase()) || a.subcategory.toLowerCase().includes(k.toLowerCase())))
       .reduce((sum, a) => sum + a.estimatedValue, 0) +
     investments
-      .filter((i) => ['Cash', 'FD', 'RD'].includes(i.type))
+      .filter((i) => ['Cash', 'FD', 'RD', 'Fixed Deposit', 'Recurring Deposit', 'Fixed Deposit (FD)', 'Recurring Deposit (RD)'].includes(i.type))
       .reduce((sum, i) => sum + i.currentValue, 0);
 
   // Financial Health Score
@@ -682,17 +682,36 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const payLoanEmi = async (id: string) => {
     const target = loans.find((l) => l.id === id);
-    if (!target) return;
+    if (!target || target.outstandingAmount <= 0 || target.emisRemaining <= 0) return;
     const monthlyRate = (target.interestRate ?? 0) / (12 * 100);
     const interest = target.outstandingAmount * monthlyRate;
     const principalPaid = Math.max(0, target.monthlyEmi - interest);
     const newOutstanding = Math.max(0, target.outstandingAmount - principalPaid);
     const newRemaining = Math.max(0, target.emisRemaining - 1);
 
+    // Advance next EMI date by 1 month if present and installments remain
+    let nextDate = target.nextEmiDate;
+    if (nextDate && newRemaining > 0) {
+      const parts = nextDate.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        const nextMonthDate = new Date(y, m, d); // In JS Date constructor, month index m is next month
+        const ny = nextMonthDate.getFullYear();
+        const nm = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+        const nd = String(nextMonthDate.getDate()).padStart(2, '0');
+        nextDate = `${ny}-${nm}-${nd}`;
+      }
+    } else if (newRemaining === 0) {
+      nextDate = undefined;
+    }
+
     const updated: Loan = {
       ...target,
       outstandingAmount: Math.round(newOutstanding),
       emisRemaining: newRemaining,
+      nextEmiDate: nextDate,
       updatedAt: Date.now(),
     };
     if (isCloudSync && user?.id) {

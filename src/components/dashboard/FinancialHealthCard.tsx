@@ -16,10 +16,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Modal } from '@/components/common/Modal';
-import { formatPercent } from '@/lib/formatters';
+import { formatPercent, formatCurrency } from '@/lib/formatters';
 
 export const FinancialHealthCard: React.FC = () => {
-  const { financialHealth } = useFinance();
+  const { financialHealth, monthlyIncome, monthlyExpenses, settings } = useFinance();
   const [showDrilldown, setShowDrilldown] = useState(false);
   const {
     score,
@@ -49,7 +49,10 @@ export const FinancialHealthCard: React.FC = () => {
       title: 'Savings Rate',
       score: savingsScore,
       metricLabel: `${formatPercent(metrics?.savingsRate || 0, 1)} savings rate`,
-      benchmark: 'Target: > 25% of net income',
+      benchmark:
+        monthlyIncome > 0
+          ? `Target: > 25% (~${formatCurrency(monthlyIncome * 0.25, { symbol: settings.currencySymbol, compact: true })}/mo)`
+          : 'Target: > 25% of net income',
       icon: PiggyBank,
       actionHref: '/budget',
       actionLabel: 'Adjust Budget',
@@ -75,7 +78,10 @@ export const FinancialHealthCard: React.FC = () => {
       title: 'Emergency Fund',
       score: emergencyFundScore,
       metricLabel: `${(metrics?.emergencyFundMonths || 0).toFixed(1)} months of expenses`,
-      benchmark: 'Target: 3 to 6 months of mandatory expenses',
+      benchmark:
+        monthlyExpenses > 0
+          ? `Target: 3-6 mos (~${formatCurrency(monthlyExpenses * 6, { symbol: settings.currencySymbol, compact: true })})`
+          : 'Target: 3 to 6 months of mandatory expenses',
       icon: ShieldCheck,
       actionHref: '/goals',
       actionLabel: 'Fund Emergency Goal',

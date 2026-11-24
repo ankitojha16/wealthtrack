@@ -114,11 +114,32 @@ export function formatPercent(value: number, decimals: number = 2, showSign: boo
 }
 
 /**
+ * Safely parse date strings (YYYY-MM-DD or YYYY-MM) in local timezone
+ * avoiding UTC midnight conversion shift across timezones
+ */
+export function parseDateSafe(dateString: string | number): Date {
+  if (typeof dateString === 'string') {
+    const s = dateString.trim();
+    // YYYY-MM
+    const ymMatch = s.match(/^(\d{4})-(\d{1,2})$/);
+    if (ymMatch) {
+      return new Date(Number(ymMatch[1]), Number(ymMatch[2]) - 1, 1);
+    }
+    // YYYY-MM-DD
+    const ymdMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymdMatch) {
+      return new Date(Number(ymdMatch[1]), Number(ymdMatch[2]) - 1, Number(ymdMatch[3]));
+    }
+  }
+  return new Date(dateString);
+}
+
+/**
  * Format date nicely e.g. "21 Sep 2026"
  */
 export function formatDate(dateString: string | number): string {
   if (!dateString) return '';
-  const date = new Date(dateString);
+  const date = parseDateSafe(dateString);
   if (isNaN(date.getTime())) return String(dateString);
   return date.toLocaleDateString('en-IN', {
     day: 'numeric',
@@ -132,7 +153,7 @@ export function formatDate(dateString: string | number): string {
  */
 export function formatMonthYear(dateString: string | number): string {
   if (!dateString) return '';
-  const date = new Date(dateString);
+  const date = parseDateSafe(dateString);
   if (isNaN(date.getTime())) return String(dateString);
   return date.toLocaleDateString('en-IN', {
     month: 'long',

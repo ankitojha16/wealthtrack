@@ -131,6 +131,143 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Print-Only Comprehensive Financial Audit Statement */}
+      <div className="hidden print:block space-y-6">
+        {/* Master Balance Sheet Table */}
+        <div className="border border-slate-300 rounded-xl p-4">
+          <h2 className="text-sm font-black uppercase tracking-wider text-slate-800 mb-3 border-b pb-2">
+            1. Master Balance Sheet & Solvency Summary
+          </h2>
+          <div className="grid grid-cols-4 gap-4 text-xs mb-4">
+            <div>
+              <span className="text-slate-500 block">Total Assets</span>
+              <span className="text-sm font-bold">{formatCurrency(totalAssets, { symbol: settings.currencySymbol })}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Total Liabilities</span>
+              <span className="text-sm font-bold text-rose-600">{formatCurrency(totalLiabilities, { symbol: settings.currencySymbol })}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Net Worth</span>
+              <span className="text-sm font-bold text-sky-700">{formatCurrency(netWorth, { symbol: settings.currencySymbol })}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Debt-to-Asset Ratio</span>
+              <span className="text-sm font-bold">
+                {totalAssets > 0 ? ((totalLiabilities / totalAssets) * 100).toFixed(1) : '0'}%
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-xs pt-2 border-t">
+            <div>
+              <span className="text-slate-500 block">Monthly Income</span>
+              <span className="font-bold">{formatCurrency(monthlyIncome, { symbol: settings.currencySymbol })}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Monthly Expenses</span>
+              <span className="font-bold">{formatCurrency(monthlyExpenses, { symbol: settings.currencySymbol })}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Monthly EMI Burden</span>
+              <span className="font-bold">{formatCurrency(totalMonthlyEmi, { symbol: settings.currencySymbol })}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Financial Health Score Audit */}
+        <div className="border border-slate-300 rounded-xl p-4">
+          <div className="flex items-center justify-between border-b pb-2 mb-3">
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-800">
+              2. Algorithmic Financial Health Audit
+            </h2>
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-slate-100 border text-slate-900">
+              Score: {financialHealth.score}/100
+            </span>
+          </div>
+          <div className="grid grid-cols-5 gap-3 text-xs">
+            <div className="p-2 border rounded-lg bg-slate-50">
+              <span className="text-slate-500 block text-[10px]">Savings Score</span>
+              <span className="font-bold">{financialHealth.savingsScore}/100</span>
+            </div>
+            <div className="p-2 border rounded-lg bg-slate-50">
+              <span className="text-slate-500 block text-[10px]">Debt Score</span>
+              <span className="font-bold">{financialHealth.debtScore}/100</span>
+            </div>
+            <div className="p-2 border rounded-lg bg-slate-50">
+              <span className="text-slate-500 block text-[10px]">Emergency Reserve</span>
+              <span className="font-bold">{financialHealth.emergencyFundScore}/100</span>
+            </div>
+            <div className="p-2 border rounded-lg bg-slate-50">
+              <span className="text-slate-500 block text-[10px]">Goals Velocity</span>
+              <span className="font-bold">{financialHealth.goalsScore}/100</span>
+            </div>
+            <div className="p-2 border rounded-lg bg-slate-50">
+              <span className="text-slate-500 block text-[10px]">Investments</span>
+              <span className="font-bold">{financialHealth.investmentScore}/100</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Investment & Debt Positions Table */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="border border-slate-300 rounded-xl p-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 border-b pb-1">
+              Investments Portfolio ({investments.length})
+            </h3>
+            {investments.length === 0 ? (
+              <p className="text-xs text-slate-400">No active investments</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-500 border-b">
+                    <th className="text-left pb-1">Instrument</th>
+                    <th className="text-right pb-1">Invested</th>
+                    <th className="text-right pb-1">Current</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {investments.map((inv) => (
+                    <tr key={inv.id}>
+                      <td className="py-1">{inv.name} <span className="text-[10px] text-slate-400">({inv.type})</span></td>
+                      <td className="text-right py-1">{formatCurrency(inv.investedAmount, { symbol: settings.currencySymbol })}</td>
+                      <td className="text-right py-1 font-bold">{formatCurrency(inv.currentValue, { symbol: settings.currencySymbol })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="border border-slate-300 rounded-xl p-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 border-b pb-1">
+              Active Debt & Liabilities ({loans.length})
+            </h3>
+            {loans.length === 0 ? (
+              <p className="text-xs text-slate-400">No active loans or debts</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-500 border-b">
+                    <th className="text-left pb-1">Loan</th>
+                    <th className="text-right pb-1">EMI</th>
+                    <th className="text-right pb-1">Outstanding</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {loans.map((loan) => (
+                    <tr key={loan.id}>
+                      <td className="py-1">{loan.name} <span className="text-[10px] text-slate-400">({loan.type})</span></td>
+                      <td className="text-right py-1">{formatCurrency(loan.monthlyEmi, { symbol: settings.currencySymbol })}</td>
+                      <td className="text-right py-1 font-bold text-rose-600">{formatCurrency(loan.outstandingAmount, { symbol: settings.currencySymbol })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
         <div>
@@ -202,8 +339,10 @@ export default function ReportsPage() {
         </button>
       </div>
 
-      {/* ----------------- TAB 1: OVERVIEW ----------------- */}
-      {activeTab === 'overview' && (
+      {/* Interactive Tabs Content */}
+      <div className="no-print space-y-8">
+        {/* ----------------- TAB 1: OVERVIEW ----------------- */}
+        {activeTab === 'overview' && (
         <div className="space-y-8 animate-fade-in">
           {/* Complete Financial Overview Grid (as required by Section 16) */}
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
@@ -655,6 +794,7 @@ export default function ReportsPage() {
 
       {/* ----------------- TAB 4: TAX REGIME COMPARATOR (Section 22) ----------------- */}
       {activeTab === 'tax' && <TaxRegimeComparator />}
+      </div>
     </div>
   );
 }

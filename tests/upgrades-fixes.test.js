@@ -126,3 +126,17 @@ test('WealthTrack 2.5 - Goal calculation detects overdue goals when target date 
   assert.equal(isCompleted, false);
   assert.equal(isOverdue, true, 'Goal with past target date and incomplete funding must be flagged as overdue');
 });
+
+test('WealthTrack 2.5 - Loan Calculator is available in catalog and via slug aliases', async () => {
+  const { CALCULATORS } = await import('../src/lib/data/calculators.ts');
+  const emiCalc = CALCULATORS.find((c) => c.slug === 'emi');
+  assert.ok(emiCalc, 'EMI / Loan calculator must exist');
+  assert.match(emiCalc.title, /Loan/i, 'Calculator title should clearly identify as Loan Calculator');
+
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const pageFile = fs.readFileSync(path.join(process.cwd(), 'src/app/calculators/[slug]/page.tsx'), 'utf8');
+  assert.ok(pageFile.includes("slug: 'loan'"), 'Includes loan slug alias');
+  assert.ok(pageFile.includes("slug: 'loan-calculator'"), 'Includes loan-calculator slug alias');
+  assert.ok(pageFile.includes("resolveSlug"), 'Includes resolveSlug helper');
+});

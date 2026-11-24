@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { CALCULATORS } from '@/lib/data/calculators';
-import { Calculator, Search, ArrowRight, Sparkles, Flame, TrendingUp } from 'lucide-react';
+import { Calculator, Search, ArrowRight, Sparkles, Flame, TrendingUp, CreditCard } from 'lucide-react';
 
 export default function CalculatorsCatalogPage() {
   const [search, setSearch] = useState('');
@@ -47,7 +47,32 @@ export default function CalculatorsCatalogPage() {
       </div>
 
       {/* Featured Interactive Simulators */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-6xl mx-auto">
+        <Link
+          href="/calculators/emi"
+          className="p-5 rounded-3xl bg-gradient-to-br from-indigo-500/10 via-sky-500/5 to-cyan-500/10 dark:from-indigo-950/30 dark:via-sky-950/20 dark:to-cyan-950/30 border border-indigo-200/80 dark:border-indigo-900/50 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <CreditCard className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-slate-900 dark:text-white">
+                  Loan & EMI Calculator
+                </span>
+                <span className="text-[9px] uppercase font-black px-1.5 py-0.2 rounded bg-indigo-600 text-white">
+                  Popular
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Home, Car & Personal loan EMIs with amortization schedule.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:translate-x-1 transition-transform" />
+        </Link>
+
         <Link
           href="/tools/fire-simulator"
           className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-rose-500/10 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-rose-950/30 border border-amber-200/80 dark:border-amber-900/50 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
@@ -107,7 +132,7 @@ export default function CalculatorsCatalogPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search EMI, SIP, CAGR, XIRR, FD, Prepayment..."
+            placeholder="Search Loan Calculator, EMI, SIP, CAGR, XIRR, FD, Prepayment..."
             className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-medium text-slate-900 dark:text-white shadow-sm focus:ring-2 focus:ring-sky-500"
           />
         </div>

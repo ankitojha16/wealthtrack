@@ -1,9 +1,9 @@
-import { CalculatorMeta } from '@/types';
+import type { CalculatorMeta } from '../../types/index.ts';
 
 export const CALCULATORS: CalculatorMeta[] = [
   {
     slug: 'emi',
-    title: 'EMI Calculator',
+    title: 'Loan & EMI Calculator',
     description: 'Calculate your Equated Monthly Installment (EMI), total interest payable, and amortization breakdown for home, car, or personal loans.',
     category: 'Loan & Debt',
     formula: 'E = P × r × (1 + r)^n / ((1 + r)^n - 1)',

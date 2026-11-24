@@ -11,14 +11,24 @@ interface Props {
   };
 }
 
+function resolveSlug(rawSlug: string): string {
+  if (rawSlug === 'loan' || rawSlug === 'loan-calculator') {
+    return 'emi';
+  }
+  return rawSlug;
+}
+
 export async function generateStaticParams() {
-  return CALCULATORS.map((calc) => ({
+  const params = CALCULATORS.map((calc) => ({
     slug: calc.slug,
   }));
+  params.push({ slug: 'loan' }, { slug: 'loan-calculator' });
+  return params;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const calc = CALCULATORS.find((c) => c.slug === params.slug);
+  const slug = resolveSlug(params.slug);
+  const calc = CALCULATORS.find((c) => c.slug === slug);
   if (!calc) return {};
 
   return {
@@ -33,7 +43,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default function CalculatorPage({ params }: Props) {
-  const calc = CALCULATORS.find((c) => c.slug === params.slug);
+  const slug = resolveSlug(params.slug);
+  const calc = CALCULATORS.find((c) => c.slug === slug);
   if (!calc) notFound();
 
   // Find related calculators and articles

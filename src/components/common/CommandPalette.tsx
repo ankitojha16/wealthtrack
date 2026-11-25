@@ -21,22 +21,29 @@ import {
   ArrowRight,
   X,
   Coins,
+  Download,
+  FileSpreadsheet,
+  Keyboard,
+  Repeat,
 } from 'lucide-react';
 import { useFinance } from '@/lib/context/FinanceContext';
+import { downloadJSONBackup, exportTransactionsCSV, exportGoalsCSV } from '@/lib/export-import';
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenQuickAdd?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
   onOpenQuickAdd,
+  onOpenShortcuts,
 }) => {
   const router = useRouter();
-  const { settings, updateSettings, loadSampleData } = useFinance();
+  const { settings, updateSettings, loadSampleData, transactions, goals } = useFinance();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,9 +72,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     // Calculators
     { id: 'calc-sip', category: 'Calculators', title: 'SIP Calculator', subtitle: 'Compute future wealth from monthly mutual fund SIPs', icon: Calculator, action: () => router.push('/calculators/sip') },
     { id: 'calc-emi', category: 'Calculators', title: 'Loan EMI Calculator', subtitle: 'Calculate monthly installment and amortization table', icon: Calculator, action: () => router.push('/calculators/emi') },
+    { id: 'calc-loan', category: 'Calculators', title: 'Dedicated Loan & Prepayment Calculator', subtitle: 'Presets for Home/Auto/Personal loans with prepayment savings', icon: CreditCard, action: () => router.push('/calculators/loan') },
     { id: 'calc-ppf', category: 'Calculators', title: 'PPF Calculator', subtitle: '15-year public provident fund compounding projection', icon: Calculator, action: () => router.push('/calculators/ppf') },
     { id: 'calc-cagr', category: 'Calculators', title: 'CAGR Calculator', subtitle: 'Compound Annual Growth Rate for investments', icon: Calculator, action: () => router.push('/calculators/cagr') },
     { id: 'calc-swp', category: 'Calculators', title: 'SWP Calculator', subtitle: 'Systematic Withdrawal Plan for monthly cashflow', icon: Calculator, action: () => router.push('/calculators/swp') },
+
+    // Navigation Additions
+    { id: 'nav-subs', category: 'Navigation', title: 'Subscriptions & Recurring Burn', subtitle: 'Auto-detect and manage recurring services (Netflix, Rent, SIP)', icon: Repeat, action: () => router.push('/budget') },
 
     // Actions
     {
@@ -79,6 +90,50 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         onClose();
         if (onOpenQuickAdd) onOpenQuickAdd();
+      },
+    },
+    {
+      id: 'act-shortcuts',
+      category: 'Actions',
+      title: 'Keyboard Shortcuts Guide (?)',
+      subtitle: 'Browse all keyboard shortcuts and navigation hotkeys',
+      icon: Keyboard,
+      action: () => {
+        onClose();
+        if (onOpenShortcuts) onOpenShortcuts();
+      },
+    },
+    {
+      id: 'act-export-json',
+      category: 'Actions',
+      title: 'Download JSON Backup',
+      subtitle: 'Export complete snapshot of all financial records',
+      icon: Download,
+      action: () => {
+        onClose();
+        downloadJSONBackup();
+      },
+    },
+    {
+      id: 'act-export-tx',
+      category: 'Actions',
+      title: 'Export Transactions (CSV)',
+      subtitle: 'Download all recorded transactions as spreadsheet',
+      icon: FileSpreadsheet,
+      action: () => {
+        onClose();
+        exportTransactionsCSV(transactions);
+      },
+    },
+    {
+      id: 'act-export-goals',
+      category: 'Actions',
+      title: 'Export Financial Goals (CSV)',
+      subtitle: 'Download target goals and current progress as spreadsheet',
+      icon: Target,
+      action: () => {
+        onClose();
+        exportGoalsCSV(goals);
       },
     },
     {
@@ -120,6 +175,26 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: Coins,
       action: () => {
         updateSettings({ currency: 'USD', currencySymbol: '$', numberFormat: 'international' });
+      },
+    },
+    {
+      id: 'act-currency-eur',
+      category: 'Actions',
+      title: 'Switch Currency to EUR (€)',
+      subtitle: 'Euros with International numbering format',
+      icon: Coins,
+      action: () => {
+        updateSettings({ currency: 'EUR', currencySymbol: '€', numberFormat: 'international' });
+      },
+    },
+    {
+      id: 'act-currency-gbp',
+      category: 'Actions',
+      title: 'Switch Currency to GBP (£)',
+      subtitle: 'British Pounds Sterling with International numbering format',
+      icon: Coins,
+      action: () => {
+        updateSettings({ currency: 'GBP', currencySymbol: '£', numberFormat: 'international' });
       },
     },
   ];

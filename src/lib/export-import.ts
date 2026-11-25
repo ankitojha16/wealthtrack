@@ -1,5 +1,5 @@
 import { ExportPayload, exportAllData, importAllData } from './db';
-import { Transaction, Investment, Loan } from '@/types';
+import { Transaction, Investment, Loan, Goal, MonthlySnapshot } from '@/types';
 
 /**
  * Trigger file download in browser
@@ -36,7 +36,7 @@ export function exportTransactionsCSV(transactions: Transaction[]) {
     `"${t.type}"`,
     `"${t.category.replace(/"/g, '""')}"`,
     t.amount,
-    `"${t.paymentMethod}"`,
+    `"${(t.paymentMethod || 'Other').replace(/"/g, '""')}"`,
     `"${(t.description || '').replace(/"/g, '""')}"`,
     t.isRecurring ? 'Yes' : 'No',
   ]);
@@ -79,17 +79,64 @@ export function exportLoansCSV(loans: Loan[]) {
   const rows = loans.map((l) => [
     `"${l.name.replace(/"/g, '""')}"`,
     `"${l.type}"`,
-    l.originalAmount,
+    l.originalAmount ?? l.outstandingAmount,
     l.outstandingAmount,
     l.monthlyEmi,
     l.emisRemaining,
-    l.interestRate,
+    l.interestRate ?? 0,
     `"${l.nextEmiDate || ''}"`,
   ]);
 
   const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
   const dateStr = new Date().toISOString().split('T')[0];
   downloadFile(csv, `wealthtrack-loans-${dateStr}.csv`, 'text/csv');
+}
+
+/**
+ * Export Financial Goals as CSV
+ */
+export function exportGoalsCSV(goals: Goal[]) {
+  const headers = ['Goal Name', 'Category', 'Target Amount', 'Current Amount', 'Remaining', 'Progress %', 'Target Date', 'Monthly Contribution'];
+  const rows = goals.map((g) => {
+    const remaining = Math.max(0, g.targetAmount - g.currentAmount);
+    const progress = g.targetAmount > 0 ? ((g.currentAmount / g.targetAmount) * 100).toFixed(1) : '0';
+    return [
+      `"${g.name.replace(/"/g, '""')}"`,
+      `"${g.category}"`,
+      g.targetAmount,
+      g.currentAmount,
+      remaining,
+      `"${progress}%"`,
+      `"${g.targetDate || ''}"`,
+      g.monthlyContribution || 0,
+    ];
+  });
+
+  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  const dateStr = new Date().toISOString().split('T')[0];
+  downloadFile(csv, `wealthtrack-goals-${dateStr}.csv`, 'text/csv');
+}
+
+/**
+ * Export Monthly Snapshots / Net Worth Trajectory as CSV
+ */
+export function exportSnapshotsCSV(snapshots: MonthlySnapshot[]) {
+  const headers = ['Month', 'Net Worth', 'Total Assets', 'Total Liabilities', 'Investments Value', 'Outstanding Loans', 'Monthly Income', 'Monthly Expenses', 'Monthly Savings'];
+  const rows = snapshots.map((s) => [
+    `"${s.monthYear}"`,
+    s.netWorth,
+    s.totalAssets,
+    s.totalLiabilities,
+    s.totalInvestmentsValue ?? s.totalInvestments ?? 0,
+    s.totalLoans ?? 0,
+    s.income ?? 0,
+    s.expenses ?? 0,
+    s.savings ?? 0,
+  ]);
+
+  const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  const dateStr = new Date().toISOString().split('T')[0];
+  downloadFile(csv, `wealthtrack-networth-history-${dateStr}.csv`, 'text/csv');
 }
 
 export {

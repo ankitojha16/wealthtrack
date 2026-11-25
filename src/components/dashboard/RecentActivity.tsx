@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '@/lib/context/FinanceContext';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import { Search, ArrowUpRight, ArrowDownRight, Trash2, Edit2, Wallet } from 'lucide-react';
+import { Search, ArrowUpRight, ArrowDownRight, Trash2, Edit2, Wallet, Repeat } from 'lucide-react';
 import { Transaction } from '@/types';
 import Link from 'next/link';
 
@@ -144,15 +144,20 @@ export const RecentActivity: React.FC<RecentActivityProps> = React.memo(function
                         {tx.category}
                       </span>
                       {tx.isRecurring && (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 font-medium">
-                          Recurring
+                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 font-semibold">
+                          <Repeat className="w-2.5 h-2.5" />
+                          <span>Recurring</span>
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-slate-400">
                       <span>{formatDate(tx.date)}</span>
-                      <span>•</span>
-                      <span>{tx.paymentMethod}</span>
+                      {tx.paymentMethod && (
+                        <>
+                          <span>•</span>
+                          <span>{tx.paymentMethod}</span>
+                        </>
+                      )}
                       {tx.description && (
                         <>
                           <span>•</span>

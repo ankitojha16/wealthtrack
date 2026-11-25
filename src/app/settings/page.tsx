@@ -7,6 +7,8 @@ import {
   exportTransactionsCSV,
   exportInvestmentsCSV,
   exportLoansCSV,
+  exportGoalsCSV,
+  exportSnapshotsCSV,
   readUploadedJSON,
 } from '@/lib/export-import';
 import { importAllData, clearAllData } from '@/lib/db';
@@ -24,9 +26,13 @@ import {
   CheckCircle2,
   Palette,
   Sparkles,
+  Keyboard,
+  Target,
+  LineChart,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ACCENT_COLOR_OPTIONS } from '@/lib/data/categories';
+import { KeyboardShortcutsModal } from '@/components/common/KeyboardShortcutsModal';
 
 export default function SettingsPage() {
   const {
@@ -35,6 +41,8 @@ export default function SettingsPage() {
     transactions,
     investments,
     loans,
+    goals,
+    snapshots,
     refreshData,
     loadSampleData,
     user,
@@ -47,6 +55,7 @@ export default function SettingsPage() {
   const [isLoadingSample, setIsLoadingSample] = useState<boolean>(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
 
   const handleLoadSampleData = async () => {
     try {
@@ -309,7 +318,7 @@ export default function SettingsPage() {
           Save your financial data as a JSON snapshot or download separate CSV spreadsheets for accounting.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
           <button
             type="button"
             onClick={() => downloadJSONBackup()}
@@ -344,6 +353,24 @@ export default function SettingsPage() {
           >
             <FileSpreadsheet className="w-4 h-4 text-amber-500" />
             <span>Loans CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => exportGoalsCSV(goals)}
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 transition-all"
+          >
+            <Target className="w-4 h-4 text-teal-500" />
+            <span>Goals CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => exportSnapshotsCSV(snapshots)}
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 transition-all"
+          >
+            <LineChart className="w-4 h-4 text-purple-500" />
+            <span>Net Worth History CSV</span>
           </button>
         </div>
       </div>
@@ -412,6 +439,29 @@ export default function SettingsPage() {
         </button>
       </div>
 
+      {/* Keyboard Shortcuts Helper */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <Keyboard className="w-4 h-4 text-sky-500" />
+              Keyboard Shortcuts
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Rapid navigation and productivity hotkeys. Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono font-bold text-[10px] text-slate-700 dark:text-slate-300">?</kbd> anywhere in WealthTrack to open the shortcuts guide.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowShortcutsModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900/60 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-all shrink-0"
+          >
+            <Keyboard className="w-4 h-4" />
+            <span>View Hotkeys</span>
+          </button>
+        </div>
+      </div>
+
       {/* Danger Zone */}
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-rose-200/60 dark:border-rose-900/40 shadow-sm space-y-4">
         <h2 className="text-sm font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-2">
@@ -473,6 +523,12 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={showShortcutsModal}
+        onClose={() => setShowShortcutsModal(false)}
+      />
     </div>
   );
 }
